@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/lib/store';
-import { insertCalendarEventSchema, type InsertCalendarEvent, type CalendarEvent } from '@shared/schema';
+import { insertCalendarEventSchema, type InsertCalendarEvent, type CalendarEvent, type EventReminder } from '@shared/schema';
+import { CalendarItem, convertToCalendarItems, detectConflicts, generateEventInstances } from '@/utils/calendarHelpers';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { 
   Calendar as CalendarIcon, 
   MapPin, 
@@ -40,9 +42,11 @@ import {
   Tag, 
   Plus, 
   X,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
+import { nanoid } from 'nanoid';
 
 interface EventFormModalProps {
   isOpen: boolean;
@@ -53,7 +57,9 @@ interface EventFormModalProps {
 
 export function EventFormModal({ isOpen, onClose, event, onSubmit }: EventFormModalProps) {
   const { t } = useTranslation();
+  const { tasks, calendarEvents, goals, reminders } = useAppStore();
   const [newTag, setNewTag] = useState('');
+  const [conflicts, setConflicts] = useState<CalendarItem[]>([]);
 
   const form = useForm<InsertCalendarEvent>({
     resolver: zodResolver(insertCalendarEventSchema),
@@ -64,7 +70,15 @@ export function EventFormModal({ isOpen, onClose, event, onSubmit }: EventFormMo
       tags: [],
       color: '#3b82f6',
       isAllDay: false,
+      recurrence: { type: 'none', interval: 1 },
     }
+  });
+
+  const recurrenceType = form.watch('recurrence.type');
+
+  const { fields: reminderFields, append: appendReminder, remove: removeReminder } = useFieldArray({
+    control: form.control,
+    name: "reminders",
   });
 
   useEffect(() => {
@@ -92,6 +106,25 @@ export function EventFormModal({ isOpen, onClose, event, onSubmit }: EventFormMo
       });
     }
   }, [event, form]);
+
+  const watchedStartDate = form.watch('startDate');
+  const watchedEndDate = form.watch('endDate');
+
+  useEffect(() => {
+    if (watchedStartDate && watchedEndDate) {
+      const allItems = convertToCalendarItems(tasks, calendarEvents, goals, reminders);
+      const currentItem = {
+        id: event?.id || 'new-event',
+        startTime: watchedStartDate,
+        endTime: watchedEndDate,
+      };
+      const detectedConflicts = detectConflicts(allItems, currentItem);
+      setConflicts(detectedConflicts);
+    } else {
+      setConflicts([]);
+    }
+  }, [watchedStartDate, watchedEndDate, tasks, calendarEvents, goals, reminders, event?.id]);
+
 
   const handleSubmit = async (data: InsertCalendarEvent) => {
     try {
@@ -373,6 +406,20 @@ export function EventFormModal({ isOpen, onClose, event, onSubmit }: EventFormMo
                   />
                 </div>
               )}
+
+              {conflicts.length > 0 && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+                  <div className="flex items-start">
+                    <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold">{t('calendar.conflict_warning_title')}</p>
+                      <ul className="list-disc pl-5 mt-1">
+                        {conflicts.map(c => <li key={c.id}>{c.title}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -394,6 +441,99 @@ export function EventFormModal({ isOpen, onClose, event, onSubmit }: EventFormMo
                 </FormItem>
               )}
             />
+
+            <Separator />
+
+            {/* Recurrence Section */}
+            <div className="space-y-4">
+              <FormLabel className="flex items-center space-x-2">
+                <Repeat className="w-4 h-4" />
+                <span>{t('tasks.recurrence')}</span>
+              </FormLabel>
+              <FormField
+                control={form.control}
+                name="recurrence.type"
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">{t('tasks.recurrence.none')}</SelectItem>
+                        <SelectItem value="daily">{t('tasks.recurrence.daily')}</SelectItem>
+                        <SelectItem value="weekly">{t('tasks.recurrence.weekly')}</SelectItem>
+                        <SelectItem value="monthly">{t('tasks.recurrence.monthly')}</SelectItem>
+                        <SelectItem value="yearly">{t('tasks.recurrence.yearly')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              {recurrenceType !== 'none' && (
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                  <FormField
+                    control={form.control}
+                    name="recurrence.interval"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('tasks.recurrence_interval')}</FormLabel>
+                        <Input
+                          type="number"
+                          min="1"
+                          {...field}
+                          onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)}
+                          value={field.value || 1}
+                        />
+                      </FormItem>
+                    )}
+                  />
+                  {recurrenceType === 'weekly' && (
+                    <FormField
+                      control={form.control}
+                      name="recurrence.daysOfWeek"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('tasks.recurrence_days')}</FormLabel>
+                          <ToggleGroup
+                            type="multiple"
+                            variant="outline"
+                            value={field.value?.map(String) || []}
+                            onValueChange={(value) => field.onChange(value.map(Number))}
+                            className="flex flex-wrap gap-1"
+                          >
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                              <ToggleGroupItem key={i} value={String(i)} aria-label={day}>
+                                {day}
+                              </ToggleGroupItem>
+                            ))}
+                          </ToggleGroup>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  {recurrenceType === 'monthly' && (
+                     <FormField
+                      control={form.control}
+                      name="recurrence.dayOfMonth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('tasks.recurrence_day_of_month')}</FormLabel>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="31"
+                            {...field}
+                            onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)}
+                             value={field.value || 1}
+                          />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Separator />
 
             {/* Tags */}
             <div className="space-y-3">
@@ -434,6 +574,50 @@ export function EventFormModal({ isOpen, onClose, event, onSubmit }: EventFormMo
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Reminders Section */}
+            <div className="space-y-3">
+               <FormLabel className="flex items-center space-x-2">
+                <Clock className="w-4 h-4" />
+                <span>{t('common.reminders')}</span>
+              </FormLabel>
+              {reminderFields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    {...form.register(`reminders.${index}.value`)}
+                    className="w-24"
+                  />
+                  <Select
+                    {...form.register(`reminders.${index}.unit`)}
+                    defaultValue={field.unit}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">{t('common.minutes')}</SelectItem>
+                      <SelectItem value="hours">{t('common.hours')}</SelectItem>
+                      <SelectItem value="days">{t('common.days')}</SelectItem>
+                      <SelectItem value="weeks">{t('common.weeks')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeReminder(index)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => appendReminder({ id: nanoid(), value: 10, unit: 'minutes' })}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t('calendar.add_reminder')}
+              </Button>
             </div>
 
             {/* Form Actions */}

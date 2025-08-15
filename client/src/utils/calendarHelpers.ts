@@ -1,6 +1,6 @@
 
-import { format, addDays, isSameDay, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { Task, Event, Goal, Reminder, TimeBlock, RecurrenceRule } from '@/types';
+import { format, addDays, addWeeks, addMonths, isSameDay, startOfDay, endOfDay, parseISO, eachDayOfInterval, areIntervalsOverlapping } from 'date-fns';
+import { Task, CalendarEvent, Goal, Reminder, TimeBlock, RecurrencePattern } from '@shared/schema';
 
 export interface CalendarItem {
   id: string;
@@ -20,81 +20,100 @@ export interface CalendarItem {
   originalItem: Task | Event | Goal | Reminder | TimeBlock;
 }
 
-export const generateRecurringInstances = (
-  rule: RecurrenceRule,
-  baseItem: CalendarItem,
-  startDate: Date,
-  endDate: Date
-): CalendarItem[] => {
-  const instances: CalendarItem[] = [];
-  let currentDate = new Date(startDate);
+export const generateEventInstances = (
+  events: CalendarEvent[],
+  viewStart: Date,
+  viewEnd: Date
+): CalendarEvent[] => {
+  const instances: CalendarEvent[] = [];
 
-  while (currentDate <= endDate) {
-    if (shouldCreateInstance(rule, currentDate)) {
-      const instance: CalendarItem = {
-        ...baseItem,
-        id: `${baseItem.id}-${format(currentDate, 'yyyy-MM-dd')}`,
-        startTime: new Date(currentDate),
-        endTime: baseItem.endTime ? new Date(currentDate.getTime() + (baseItem.endTime.getTime() - baseItem.startTime.getTime())) : undefined,
-      };
-      instances.push(instance);
+  events.forEach(event => {
+    if (!event.recurrence || event.recurrence.type === 'none') {
+      // If it's a non-recurring event, just add it if it's in the view
+      if (event.startDate >= viewStart && event.startDate <= viewEnd) {
+        instances.push(event);
+      }
+    } else {
+      // It's a recurring event, generate instances
+      const rule = event.recurrence;
+      let currentDate = event.startDate;
+
+      // Iterate from the event's start date until we are past the view window
+      while (currentDate <= viewEnd) {
+        if (currentDate >= viewStart) {
+          // Check if the current date matches the recurrence rule
+          let shouldCreate = false;
+          switch (rule.type) {
+            case 'daily':
+              shouldCreate = true;
+              break;
+            case 'weekly':
+              if (rule.daysOfWeek?.includes(currentDate.getDay())) {
+                shouldCreate = true;
+              }
+              break;
+            case 'monthly':
+              if (rule.dayOfMonth === currentDate.getDate()) {
+                shouldCreate = true;
+              }
+              break;
+            case 'yearly':
+               if (rule.monthOfYear === (currentDate.getMonth() + 1) && rule.dayOfMonth === currentDate.getDate()) {
+                shouldCreate = true;
+              }
+              break;
+          }
+
+          if (shouldCreate) {
+            const duration = event.endDate.getTime() - event.startDate.getTime();
+            const instanceStartDate = new Date(currentDate);
+            const instanceEndDate = new Date(currentDate.getTime() + duration);
+
+            instances.push({
+              ...event,
+              id: `${event.id}-${format(currentDate, 'yyyy-MM-dd')}`, // Unique ID for the instance
+              startDate: instanceStartDate,
+              endDate: instanceEndDate,
+            });
+          }
+        }
+
+        // Move to the next potential date based on the rule
+        const interval = rule.interval || 1;
+        switch (rule.type) {
+          case 'daily':
+            currentDate = addDays(currentDate, interval);
+            break;
+          case 'weekly':
+             // For weekly, just advance by one day and the check will handle it
+            currentDate = addDays(currentDate, 1);
+            break;
+          case 'monthly':
+            currentDate = addMonths(currentDate, interval);
+            break;
+          case 'yearly':
+            currentDate = addYears(currentDate, interval);
+            break;
+          default:
+            // Should not happen, but as a fallback, break the loop
+            currentDate = addDays(viewEnd, 1);
+            break;
+        }
+
+        // A safety break for weekly to avoid infinite loops if interval is not handled perfectly
+        if (rule.type === 'weekly' && interval > 1) {
+            let daysAdvanced = 0;
+            while(daysAdvanced < 7 * (interval -1)) {
+                currentDate = addDays(currentDate, 1);
+                daysAdvanced++;
+            }
+        }
+
+      }
     }
-    currentDate = getNextRecurrenceDate(rule, currentDate);
-  }
+  });
 
   return instances;
-};
-
-const shouldCreateInstance = (rule: RecurrenceRule, date: Date): boolean => {
-  if (rule.endDate && date > new Date(rule.endDate)) return false;
-  if (rule.exceptions) {
-    const exceptions = JSON.parse(rule.exceptions) as string[];
-    if (exceptions.includes(format(date, 'yyyy-MM-dd'))) return false;
-  }
-
-  switch (rule.frequency) {
-    case 'daily':
-      return true;
-    case 'weekly':
-      if (rule.daysOfWeek) {
-        const daysOfWeek = JSON.parse(rule.daysOfWeek) as number[];
-        return daysOfWeek.includes(date.getDay());
-      }
-      return true;
-    case 'monthly':
-      if (rule.dayOfMonth) {
-        return date.getDate() === rule.dayOfMonth;
-      }
-      return true;
-    case 'yearly':
-      if (rule.monthOfYear && rule.dayOfMonth) {
-        return date.getMonth() === rule.monthOfYear - 1 && date.getDate() === rule.dayOfMonth;
-      }
-      return true;
-    default:
-      return false;
-  }
-};
-
-const getNextRecurrenceDate = (rule: RecurrenceRule, currentDate: Date): Date => {
-  const interval = rule.interval || 1;
-  
-  switch (rule.frequency) {
-    case 'daily':
-      return addDays(currentDate, interval);
-    case 'weekly':
-      return addDays(currentDate, 7 * interval);
-    case 'monthly':
-      const nextMonth = new Date(currentDate);
-      nextMonth.setMonth(nextMonth.getMonth() + interval);
-      return nextMonth;
-    case 'yearly':
-      const nextYear = new Date(currentDate);
-      nextYear.setFullYear(nextYear.getFullYear() + interval);
-      return nextYear;
-    default:
-      return addDays(currentDate, 1);
-  }
 };
 
 export const calculateWorkload = (items: CalendarItem[], date: Date): number => {
@@ -168,7 +187,7 @@ export const validateTimeBlock = (block: Partial<TimeBlock>): string[] => {
 
 export const convertToCalendarItems = (
   tasks: Task[] = [],
-  events: Event[] = [],
+  events: CalendarEvent[] = [],
   goals: Goal[] = [],
   reminders: Reminder[] = [],
   timeBlocks: TimeBlock[] = []
@@ -181,16 +200,13 @@ export const convertToCalendarItems = (
       items.push({
         id: task.id,
         title: task.title,
-        description: task.description,
+        description: task.notes,
         startTime: new Date(task.dueDate),
-        duration: task.estimatedDuration || 30,
         type: 'task',
         color: getProjectColor(task.project),
         project: task.project,
-        group: task.group,
         priority: task.priority,
         status: task.status,
-        isAutoRolled: task.isAutoRolled,
         originalItem: task,
       });
     }
@@ -204,29 +220,25 @@ export const convertToCalendarItems = (
       description: event.description,
       startTime: new Date(event.startDate),
       endTime: event.endDate ? new Date(event.endDate) : undefined,
-      duration: event.endDate ? 
-        Math.round((new Date(event.endDate).getTime() - new Date(event.startDate).getTime()) / 60000) : 
-        60,
       type: 'event',
-      color: getProjectColor(event.project),
-      project: event.project,
-      group: event.group,
+      color: event.color,
+      project: undefined, // Events don't have projects in the new schema
+      priority: event.priority,
       originalItem: event,
     });
   });
 
   // Convert goals (if they have due dates)
   (goals || []).forEach(goal => {
-    if (goal.targetDate) {
+    if (goal.deadline) {
       items.push({
         id: goal.id,
         title: goal.title,
         description: goal.description,
-        startTime: new Date(goal.targetDate),
-        duration: 30,
+        startTime: new Date(goal.deadline),
         type: 'goal',
         color: 'bg-purple-500',
-        status: goal.status,
+        priority: goal.priority,
         originalItem: goal,
       });
     }
@@ -238,10 +250,10 @@ export const convertToCalendarItems = (
       id: reminder.id,
       title: reminder.title,
       description: reminder.description,
-      startTime: new Date(reminder.reminderTime),
-      duration: 15,
+      startTime: new Date(reminder.remindAt),
       type: 'reminder',
       color: 'bg-blue-500',
+      priority: reminder.priority,
       originalItem: reminder,
     });
   });
@@ -251,21 +263,43 @@ export const convertToCalendarItems = (
     items.push({
       id: block.id,
       title: block.title,
-      description: block.description,
       startTime: new Date(block.startTime),
       endTime: new Date(block.endTime),
-      duration: block.duration,
       type: 'timeblock',
       color: block.color || 'bg-gray-500',
-      project: block.project,
-      group: block.group,
-      notes: block.notes,
-      isAutoRolled: block.isAutoRolled,
       originalItem: block,
     });
   });
 
   return items.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+};
+
+export const detectConflicts = (
+  allItems: CalendarItem[],
+  currentItem: Pick<CalendarItem, 'id' | 'startTime' | 'endTime'>
+): CalendarItem[] => {
+  if (!currentItem.startTime || !currentItem.endTime) {
+    return [];
+  }
+
+  return allItems.filter(item => {
+    // Don't compare item with itself
+    if (item.id === currentItem.id) {
+      return false;
+    }
+
+    if (!item.endTime) {
+      // If an item has no end time (e.g., a task with only a due date),
+      // we can't check for overlap. We could assume a default duration,
+      // but for basic detection, we will skip it.
+      return false;
+    }
+
+    return areIntervalsOverlapping(
+      { start: currentItem.startTime, end: currentItem.endTime },
+      { start: item.startTime, end: item.endTime }
+    );
+  });
 };
 
 const getProjectColor = (project?: string): string => {

@@ -2,6 +2,13 @@ import { z } from 'zod';
 
 // --- ENHANCED SCHEMAS ---
 
+// Event Reminder Schema
+export const eventReminderSchema = z.object({
+  id: z.string(),
+  unit: z.enum(['minutes', 'hours', 'days', 'weeks']),
+  value: z.number().positive(),
+});
+
 // Advanced Recurrence Schema
 export const recurrenceSchema = z.object({
   type: z.enum(['none', 'daily', 'weekly', 'monthly', 'yearly', 'custom']).default('none'),
@@ -160,10 +167,14 @@ export const calendarEventSchema = z.object({
   tags: z.array(z.string()).default([]),
   location: z.string().optional(),
   recurrence: recurrenceSchema.optional(),
+  reminders: z.array(eventReminderSchema).default([]),
   linkedItems: linkedItemsSchema.default({ tasks: [], goals: [], reminders: [], events: [] }),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
+
+// --- TYPE EXPORTS ---
+export type EventReminder = z.infer<typeof eventReminderSchema>;
 
 // Time Block Schema
 export const timeBlockSchema = z.object({

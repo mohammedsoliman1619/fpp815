@@ -26,6 +26,16 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { 
   format, 
   isSameDay, 
@@ -47,6 +57,8 @@ import {
   convertToCalendarItems, 
   CalendarItem
 } from '@/utils/calendarHelpers';
+import { MonthView } from '@/components/calendar/MonthView';
+import { YearView } from '@/components/calendar/YearView';
 import { cn } from '@/lib/utils';
 
 const getPriorityColor = (priority: string) => {
@@ -74,11 +86,14 @@ export function Calendar() {
     goals, 
     reminders,
     updateTask,
-    updateEvent
+    deleteTask,
+    deleteReminder,
+    deleteCalendarEvent,
   } = useAppStore();
 
   // State
   const [selectedItem, setSelectedItem] = useState<CalendarItem | null>(null);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [weekStartDate, setWeekStartDate] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,9 +103,14 @@ export function Calendar() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [isEventFormOpen, setIsEventFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [view, setView] = useState('week'); // 'week', 'month', 'year'
+
+  // Generate recurring event instances
+  const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+  const eventInstances = generateEventInstances(calendarEvents, weekStartDate, weekEndDate);
 
   // Get calendar items
-  const calendarItems = convertToCalendarItems(tasks, calendarEvents, goals, reminders, []);
+  const calendarItems = convertToCalendarItems(tasks, eventInstances, goals, reminders, []);
 
   // Filter items
   const filteredItems = calendarItems.filter(item => {
@@ -193,6 +213,37 @@ export function Calendar() {
       toast({
         title: t('actions.error'),
         description: t('tasks.updateError'),
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!selectedItem) return;
+
+    try {
+      switch (selectedItem.type) {
+        case 'task':
+          await deleteTask(selectedItem.id);
+          break;
+        case 'event':
+          await deleteCalendarEvent(selectedItem.id);
+          break;
+        case 'reminder':
+          await deleteReminder(selectedItem.id);
+          break;
+        // Goals are not deletable from here for now
+      }
+      toast({
+        title: t('actions.success'),
+        description: t('calendar.itemDeleted'),
+      });
+      setSelectedItem(null);
+      setIsDeleteAlertOpen(false);
+    } catch (error) {
+       toast({
+        title: t('actions.error'),
+        description: t('calendar.deleteError'),
         variant: 'destructive'
       });
     }
@@ -354,6 +405,14 @@ export function Calendar() {
                 {selectedItem.completed ? t('tasks.markIncomplete') : t('tasks.markComplete')}
               </Button>
             )}
+             <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteAlertOpen(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {t('actions.delete')}
+            </Button>
           </div>
         </div>
 
@@ -532,6 +591,12 @@ export function Calendar() {
           </div>
 
           <div className="flex items-center space-x-3">
+            <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value)} aria-label="Calendar view">
+              <ToggleGroupItem value="week" aria-label="Week view">{t('calendar.week')}</ToggleGroupItem>
+              <ToggleGroupItem value="month" aria-label="Month view">{t('calendar.month')}</ToggleGroupItem>
+              <ToggleGroupItem value="year" aria-label="Year view">{t('calendar.year')}</ToggleGroupItem>
+            </ToggleGroup>
+            <Separator orientation="vertical" className="h-6" />
             <Button variant="outline" onClick={handleAddEvent}>
               <Plus className="w-4 h-4 mr-2" />
               {t('calendar.addEvent')}
@@ -600,27 +665,33 @@ export function Calendar() {
         </div>
       </div>
 
-      {/* Day Selector */}
-      {renderDaySelector()}
+      {view === 'week' && (
+        <>
+          {/* Day Selector */}
+          {renderDaySelector()}
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden calendar-container">
-        {/* Left Panel - Items List */}
-        <div className="calendar-left-panel w-96 border-r bg-gray-50 overflow-auto">
-          <div className="p-6">
-            {renderGroupSection(t('dashboard.todays_tasks'), groupedItems.todo, groupedItems.todo.length)}
-            {renderGroupSection(t('tasks.status.in_progress'), groupedItems.in_progress, groupedItems.in_progress.length)}
-            {renderGroupSection(t('tasks.status.completed'), groupedItems.completed, groupedItems.completed.length)}
-          </div>
-        </div>
+          {/* Main Content */}
+          <div className="flex-1 flex overflow-hidden calendar-container">
+            {/* Left Panel - Items List */}
+            <div className="calendar-left-panel w-96 border-r bg-gray-50 overflow-auto">
+              <div className="p-6">
+                {renderGroupSection(t('dashboard.todays_tasks'), groupedItems.todo, groupedItems.todo.length)}
+                {renderGroupSection(t('tasks.status.in_progress'), groupedItems.in_progress, groupedItems.in_progress.length)}
+                {renderGroupSection(t('tasks.status.completed'), groupedItems.completed, groupedItems.completed.length)}
+              </div>
+            </div>
 
-        {/* Right Panel - Details */}
-        <div className="calendar-right-panel flex-1 bg-white">
-          <div className="h-full p-6">
-            {renderDetailsPanel()}
+            {/* Right Panel - Details */}
+            <div className="calendar-right-panel flex-1 bg-white">
+              <div className="h-full p-6">
+                {renderDetailsPanel()}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
+      {view === 'month' && <MonthView />}
+      {view === 'year' && <YearView />}
 
       {/* Modals */}
       <TaskFormModal
@@ -640,6 +711,23 @@ export function Calendar() {
         }}
         event={editingItem}
       />
+
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('calendar.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('calendar.deleteConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteItem}>
+              {t('actions.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -98,6 +98,7 @@ interface AppStore {
 
   createCalendarEvent: (eventData: InsertCalendarEvent) => Promise<void>;
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void>;
+  deleteCalendarEvent: (id: string) => Promise<void>;
 
   updateSettings: (updates: Partial<Settings>) => Promise<void>;
 
@@ -443,6 +444,16 @@ export const useAppStore = create<AppStore>()(
         await get().loadCalendarEvents();
       } catch (error) {
         console.error('Error updating calendar event:', error);
+      }
+    },
+
+    deleteCalendarEvent: async (id: string) => {
+      try {
+        await db.ready;
+        await db.calendarEvents.delete(id);
+        await get().loadCalendarEvents();
+      } catch (error) {
+        console.error('Error deleting calendar event:', error);
       }
     },
 
