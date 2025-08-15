@@ -15,8 +15,10 @@ import {
   InsertCalendarEvent,
   NewTask,
   NewTimeBlock,
-  NewRecurrenceRule
+  NewRecurrenceRule,
+  EventReminder
 } from '@shared/schema';
+import { addMinutes } from 'date-fns';
 import { db, dbUtils, Settings } from './db';
 
 export interface AnalyticsData {
@@ -85,7 +87,10 @@ interface AppStore {
   updateGoalProgress: (id: string, value: number) => Promise<void>;
 
   createReminder: (reminderData: InsertReminder) => Promise<void>;
+  updateReminder: (id: string, updates: Partial<Reminder>) => Promise<void>;
   deleteReminder: (id: string) => Promise<void>;
+  toggleReminderCompletion: (id: string) => Promise<void>;
+  snoozeReminder: (id: string, minutes: number) => Promise<void>;
 
   // Time Blocks
   createTimeBlock: (timeBlock: NewTimeBlock) => Promise<void>;
@@ -297,13 +302,11 @@ export const useAppStore = create<AppStore>()(
         // If the task is being marked as complete, check for linked goals
         if (newCompletedState) {
           const { goals, updateGoalProgress } = get();
-          goals.forEach(goal => {
-            if (goal.linkedItems?.tasks?.includes(id)) {
-              // Increment goal progress by 1
+          const linkedGoals = goals.filter(goal => goal.linkedItems?.tasks?.includes(id));
+          for (const goal of linkedGoals) {
               const newProgress = (goal.currentValue || 0) + 1;
-              updateGoalProgress(goal.id, newProgress);
-            }
-          });
+              await updateGoalProgress(goal.id, newProgress);
+          }
         }
 
         await get().loadTasks();
@@ -364,9 +367,29 @@ export const useAppStore = create<AppStore>()(
       await get().loadReminders();
     },
 
+    updateReminder: async (id, updates) => {
+      await db.reminders.update(id, updates);
+      await get().loadReminders();
+    },
+
     deleteReminder: async (id: string) => {
       await db.reminders.delete(id);
       await get().loadReminders();
+    },
+
+    toggleReminderCompletion: async (id: string) => {
+      const reminder = get().reminders.find(r => r.id === id);
+      if (reminder) {
+        await get().updateReminder(id, { completed: !reminder.completed });
+      }
+    },
+
+    snoozeReminder: async (id: string, minutes: number) => {
+      const reminder = get().reminders.find(r => r.id === id);
+      if (reminder) {
+        const newDueDate = addMinutes(reminder.dueDate, minutes);
+        await get().updateReminder(id, { dueDate: newDueDate });
+      }
     },
 
     // Time Blocks

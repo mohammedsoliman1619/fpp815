@@ -32,13 +32,15 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { 
   Calendar as CalendarIcon, 
   MapPin, 
   Tag, 
   Plus, 
   X,
-  Bell
+  Bell,
+  Repeat
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -63,8 +65,11 @@ export function ReminderFormModal({ isOpen, onClose, reminder, onSubmit }: Remin
       tags: [],
       completed: false,
       linkedItems: { tasks: [], goals: [], reminders: [], events: [] },
+      recurrence: { type: 'none', interval: 1 },
     }
   });
+
+  const recurrenceType = form.watch('recurrence.type');
 
   useEffect(() => {
     if (reminder) {
@@ -288,6 +293,97 @@ export function ReminderFormModal({ isOpen, onClose, reminder, onSubmit }: Remin
                 </FormItem>
               )}
             />
+
+            <Separator />
+
+            {/* Recurrence Section */}
+            <div className="space-y-4">
+              <FormLabel className="flex items-center space-x-2">
+                <Repeat className="w-4 h-4" />
+                <span>{t('tasks.recurrence')}</span>
+              </FormLabel>
+              <FormField
+                control={form.control}
+                name="recurrence.type"
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">{t('tasks.recurrence.none')}</SelectItem>
+                        <SelectItem value="daily">{t('tasks.recurrence.daily')}</SelectItem>
+                        <SelectItem value="weekly">{t('tasks.recurrence.weekly')}</SelectItem>
+                        <SelectItem value="monthly">{t('tasks.recurrence.monthly')}</SelectItem>
+                        <SelectItem value="yearly">{t('tasks.recurrence.yearly')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              {recurrenceType !== 'none' && (
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                  <FormField
+                    control={form.control}
+                    name="recurrence.interval"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('tasks.recurrence_interval')}</FormLabel>
+                        <Input
+                          type="number"
+                          min="1"
+                          {...field}
+                          onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)}
+                          value={field.value || 1}
+                        />
+                      </FormItem>
+                    )}
+                  />
+                  {recurrenceType === 'weekly' && (
+                    <FormField
+                      control={form.control}
+                      name="recurrence.daysOfWeek"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('tasks.recurrence_days')}</FormLabel>
+                          <ToggleGroup
+                            type="multiple"
+                            variant="outline"
+                            value={field.value?.map(String) || []}
+                            onValueChange={(value) => field.onChange(value.map(Number))}
+                            className="flex flex-wrap gap-1"
+                          >
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                              <ToggleGroupItem key={i} value={String(i)} aria-label={day}>
+                                {day}
+                              </ToggleGroupItem>
+                            ))}
+                          </ToggleGroup>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  {recurrenceType === 'monthly' && (
+                     <FormField
+                      control={form.control}
+                      name="recurrence.dayOfMonth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('tasks.recurrence_day_of_month')}</FormLabel>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="31"
+                            {...field}
+                            onChange={e => field.onChange(parseInt(e.target.value, 10) || 1)}
+                             value={field.value || 1}
+                          />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
 
             <Separator />
 
