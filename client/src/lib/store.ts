@@ -81,6 +81,7 @@ interface AppStore {
 
   createGoal: (goalData: InsertGoal) => Promise<void>;
   updateGoal: (id: string, updates: Partial<Goal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
   updateGoalProgress: (id: string, value: number) => Promise<void>;
 
   createReminder: (reminderData: InsertReminder) => Promise<void>;
@@ -290,7 +291,21 @@ export const useAppStore = create<AppStore>()(
     toggleTaskCompletion: async (id) => {
       const task = get().tasks.find(t => t.id === id);
       if (task) {
-        await dbUtils.updateTask(id, { completed: !task.completed });
+        const newCompletedState = !task.completed;
+        await dbUtils.updateTask(id, { completed: newCompletedState });
+
+        // If the task is being marked as complete, check for linked goals
+        if (newCompletedState) {
+          const { goals, updateGoalProgress } = get();
+          goals.forEach(goal => {
+            if (goal.linkedItems?.tasks?.includes(id)) {
+              // Increment goal progress by 1
+              const newProgress = (goal.currentValue || 0) + 1;
+              updateGoalProgress(goal.id, newProgress);
+            }
+          });
+        }
+
         await get().loadTasks();
         await get().loadAnalytics();
       }
@@ -311,6 +326,12 @@ export const useAppStore = create<AppStore>()(
 
     updateGoal: async (id, updates) => {
       await dbUtils.updateGoal(id, updates);
+      await get().loadGoals();
+      await get().loadAnalytics();
+    },
+
+    deleteGoal: async (id) => {
+      await db.goals.delete(id);
       await get().loadGoals();
       await get().loadAnalytics();
     },
