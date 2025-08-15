@@ -17,6 +17,7 @@ import {
   Moon
 } from 'lucide-react';
 import { supportedLanguages } from '@/lib/i18n';
+import { GlobalSearch } from './GlobalSearch';
 
 interface TopBarProps {
   title: string;
@@ -57,6 +58,8 @@ export function TopBar({ title }: TopBarProps) {
       </div>
 
       <div className="flex items-center space-x-3">
+        <GlobalSearch />
+
         {/* Quick Add Button */}
         <Button
           size="sm"
