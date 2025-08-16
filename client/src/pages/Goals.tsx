@@ -182,7 +182,7 @@ export function Goals() {
                 </Badge>
                 {goal.isHabit && (
                   <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                    Habit
+                    {t('goals.habit')}
                   </Badge>
                 )}
               </div>
@@ -222,7 +222,7 @@ export function Goals() {
                   onClick={() => handleProgressUpdate(goal.id, goal.currentValue + 1)}
                   className="flex-1"
                 >
-                  Mark Complete Today
+                  {t('goals.mark_complete_today')}
                 </Button>
               </div>
             </div>
@@ -238,14 +238,14 @@ export function Goals() {
               {isCompleted && (
                 <div className="flex items-center space-x-2 text-emerald-600">
                   <CheckCircle className="w-4 h-4" />
-                  <span className="text-hierarchy-small font-medium">Completed!</span>
+                  <span className="text-hierarchy-small font-medium">{t('goals.completed_message')}</span>
                 </div>
               )}
               {goal.deadline && (
                 <div className="flex items-center space-x-2 text-muted-foreground">
                   <Calendar className="w-4 h-4" />
                   <span className="text-hierarchy-small">
-                    Due {formatDate(goal.deadline)}
+                    {t('goals.due_date', { date: formatDate(goal.deadline) })}
                   </span>
                 </div>
               )}
@@ -281,7 +281,7 @@ export function Goals() {
         <div>
           <h1 className="text-hierarchy-1">{t('goals.title')}</h1>
           <p className="text-muted-foreground">
-            {activeGoals.length} active, {completedGoals.length} completed
+            {t('goals.summary', { active: activeGoals.length, completed: completedGoals.length })}
           </p>
         </div>
         <Button onClick={handleOpenCreateGoal}>
@@ -295,14 +295,14 @@ export function Goals() {
         <CardContent className="p-4">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="All Categories" />
+              <SelectValue placeholder={t('goals.all_categories')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-              <SelectItem value="health">Health</SelectItem>
-              <SelectItem value="work">Work</SelectItem>
-              <SelectItem value="learning">Learning</SelectItem>
+              <SelectItem value="all">{t('goals.all_categories')}</SelectItem>
+              <SelectItem value="personal">{t('goals.categories.personal')}</SelectItem>
+              <SelectItem value="health">{t('goals.categories.health')}</SelectItem>
+              <SelectItem value="work">{t('goals.categories.work')}</SelectItem>
+              <SelectItem value="learning">{t('goals.categories.learning')}</SelectItem>
             </SelectContent>
           </Select>
         </CardContent>
@@ -311,10 +311,10 @@ export function Goals() {
       {/* Goals Tabs */}
       <Tabs defaultValue="active" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="habits">Habits</TabsTrigger>
-          <TabsTrigger value="loops">Loops</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="active">{t('goals.tabs.active')}</TabsTrigger>
+          <TabsTrigger value="habits">{t('goals.tabs.habits')}</TabsTrigger>
+          <TabsTrigger value="loops">{t('goals.tabs.loops')}</TabsTrigger>
+          <TabsTrigger value="completed">{t('goals.tabs.completed')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="active" className="mt-6">
@@ -339,7 +339,7 @@ export function Goals() {
             <Card>
               <CardContent className="text-center py-12">
                 <Flame className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No habits created yet</p>
+                <p className="text-muted-foreground">{t('goals.no_habits')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -356,7 +356,7 @@ export function Goals() {
             <Card>
               <CardContent className="text-center py-12">
                 <CheckCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No completed goals yet</p>
+                <p className="text-muted-foreground">{t('goals.no_completed_goals')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -386,14 +386,14 @@ export function Goals() {
                   setShowHabitLoopForm(true);
                 }}>
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Loop
+                  {t('goals.create_loop')}
                 </Button>
               </div>
               {habitLoops.length === 0 ? (
                  <Card>
                   <CardContent className="text-center py-12">
                     <Repeat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No habit loops created yet.</p>
+                    <p className="text-muted-foreground">{t('goals.no_habit_loops')}</p>
                   </CardContent>
                 </Card>
               ) : (

@@ -29,7 +29,7 @@ export function Analytics() {
       <div className="space-y-6">
         <div>
           <h1 className="text-hierarchy-1">{t('analytics.title')}</h1>
-          <p className="text-muted-foreground">Analytics data is being calculated...</p>
+          <p className="text-muted-foreground">{t('analytics.calculating')}</p>
         </div>
         <Card>
           <CardContent className="text-center py-12">
@@ -84,7 +84,7 @@ export function Analytics() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Daily Task Completion</CardTitle>
+          <CardTitle>{t('analytics.daily_completion')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -100,7 +100,7 @@ export function Analytics() {
                   />
                 </div>
                 <div className="w-16 text-hierarchy-small font-medium text-right">
-                  {day.count} tasks
+                  {t('analytics.task_count', { count: day.count })}
                 </div>
               </div>
             ))}
@@ -113,7 +113,7 @@ export function Analytics() {
   const ProjectBreakdown = () => (
     <Card>
       <CardHeader>
-        <CardTitle>Tasks by Project</CardTitle>
+        <CardTitle>{t('analytics.tasks_by_project')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -142,7 +142,7 @@ export function Analytics() {
   const GoalProgress = () => (
     <Card>
       <CardHeader>
-        <CardTitle>Goal Progress</CardTitle>
+        <CardTitle>{t('analytics.goal_progress')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -171,24 +171,24 @@ export function Analytics() {
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Flame className="w-5 h-5 text-amber-500" />
-          <span>Current Streaks</span>
+          <span>{t('analytics.current_streaks')}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           {analytics.streaks.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No active streaks</p>
+            <p className="text-muted-foreground text-center py-8">{t('analytics.no_streaks')}</p>
           ) : (
             analytics.streaks.map((streak) => (
               <div key={streak.type} className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
                 <div>
                   <p className="text-hierarchy-small font-medium">{streak.type}</p>
                   <p className="text-hierarchy-xs text-muted-foreground">
-                    Last completed: {formatDate(new Date(streak.date))}
+                    {t('analytics.last_completed', { date: formatDate(new Date(streak.date)) })}
                   </p>
                 </div>
                 <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">
-                  {streak.count} days
+                  {t('analytics.day_count', { count: streak.count })}
                 </Badge>
               </div>
             ))
@@ -204,7 +204,7 @@ export function Analytics() {
       <div>
         <h1 className="text-hierarchy-1">{t('analytics.title')}</h1>
         <p className="text-muted-foreground">
-          Track your productivity and progress over time
+          {t('analytics.subtitle')}
         </p>
       </div>
 
@@ -213,28 +213,28 @@ export function Analytics() {
         <StatCard
           title={t('analytics.productivity_score')}
           value={`${analytics.productivityScore}%`}
-          subtitle="Overall completion rate"
+          subtitle={t('analytics.completion_rate')}
           icon={TrendingUp}
           color="bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
         />
         <StatCard
           title={t('analytics.tasks_completed')}
           value={completedTasks}
-          subtitle={`out of ${totalTasks} total`}
+          subtitle={t('analytics.out_of_total', { total: totalTasks })}
           icon={CheckCircle}
           color="bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400"
         />
         <StatCard
           title={t('analytics.goals_achieved')}
           value={completedGoals}
-          subtitle={`out of ${totalGoals} total`}
+          subtitle={t('analytics.out_of_total', { total: totalGoals })}
           icon={Target}
           color="bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
         />
         <StatCard
           title={t('analytics.current_streaks')}
           value={activeStreaks.length}
-          subtitle="habits maintained"
+          subtitle={t('analytics.habits_maintained')}
           icon={Flame}
           color="bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
         />
@@ -243,11 +243,11 @@ export function Analytics() {
       {/* Analytics Tabs */}
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="goals">Goals</TabsTrigger>
-          <TabsTrigger value="streaks">Streaks</TabsTrigger>
-          <TabsTrigger value="replay">Replay</TabsTrigger>
+          <TabsTrigger value="overview">{t('analytics.tabs.overview')}</TabsTrigger>
+          <TabsTrigger value="tasks">{t('analytics.tabs.tasks')}</TabsTrigger>
+          <TabsTrigger value="goals">{t('analytics.tabs.goals')}</TabsTrigger>
+          <TabsTrigger value="streaks">{t('analytics.tabs.streaks')}</TabsTrigger>
+          <TabsTrigger value="replay">{t('analytics.tabs.replay')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="mt-6">

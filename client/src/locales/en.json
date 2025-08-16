@@ -28,8 +28,9 @@
     "high_priority_tasks": "High Priority Tasks",
     "priority_attention": "Needs attention",
     "priority_clear": "All clear",
-    "no_tasks_today": "No tasks due today",
-    "add_task_suggestion": "Add a task to get started"
+    "no_tasks_today": "No tasks today",
+    "add_task_suggestion": "Add a task to get started",
+    "completed_task_activity": "Completed \"{{title}}\""
   },
   "tasks": {
     "title": "Tasks",
@@ -37,7 +38,6 @@
     "taskTitle": "Task Title",
     "taskDescription": "Task Description",
     "dueDate": "Due Date",
-    "priority": "Priority",
     "tags": "Tags",
     "createTask": "Create Task",
     "updateTask": "Update Task",
@@ -56,14 +56,37 @@
     "progress": "Progress",
     "project": "Project",
     "allTasks": "All Tasks",
-    "allProjects": "All Projects",
-    "status": "Status",
+    "all_projects": "All Projects",
     "recurrence": "Recurrence",
+    "subtitle": "{{active}} active, {{completed}} completed",
+    "newFromTemplate": "New from Template",
+    "view_toggle_aria_label": "Task view toggle",
+    "list_view_aria": "List view",
+    "kanban_view_aria": "Kanban view",
+    "timeline_view_aria": "Timeline view",
+    "priority_board_view_aria": "Priority board view",
+    "all_statuses": "All Statuses",
+    "no_due_today": "No tasks due today",
+    "no_upcoming": "No upcoming tasks",
+    "no_overdue": "No overdue tasks",
+    "in_progress_title": "In Progress Tasks",
+    "no_in_progress": "No tasks in progress",
+    "no_completed": "No completed tasks",
+    "priority": {
+      "title": "Priority",
+      "p1": "P1 - High",
+      "p2": "P2 - Medium",
+      "p3": "P3 - Normal",
+      "p4": "P4 - Low"
+    },
     "status": {
+      "title": "Status",
       "pending": "Pending",
       "in_progress": "In Progress",
       "completed": "Completed",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "todo": "To Do",
+      "done": "Done"
     }
   },
   "goals": {
@@ -76,7 +99,25 @@
       "learning": "Learning"
     },
     "streak": "day streak",
-    "progress": "Progress"
+    "progress": "Progress",
+    "habit": "Habit",
+    "mark_complete_today": "Mark Complete Today",
+    "completed_message": "Completed!",
+    "due_date": "Due {{date}}",
+    "summary": "{{active}} active, {{completed}} completed",
+    "all_categories": "All Categories",
+    "no_habits": "No habits created yet",
+    "no_completed_goals": "No completed goals yet",
+    "create_loop": "Create Loop",
+    "no_habit_loops": "No habit loops created yet.",
+    "delete_confirm_title": "Are you sure you want to delete this goal?",
+    "delete_confirm_description": "This action cannot be undone. This will permanently delete the goal and all its progress.",
+    "tabs": {
+      "active": "Active",
+      "habits": "Habits",
+      "loops": "Loops",
+      "completed": "Completed"
+    }
   },
   "calendar": {
     "title": "Calendar",
@@ -128,13 +169,42 @@
     "select_start_date": "Select start date",
     "select_end_date": "Select end date",
     "start_date": "Start Date",
-    "end_date": "End Date"
+    "end_date": "End Date",
+    "week": "Week",
+    "month": "Month",
+    "year": "Year",
+    "view_aria_label": "Calendar view",
+    "week_view_aria": "Week view",
+    "month_view_aria": "Month view",
+    "year_view_aria": "Year view",
+    "delete_success": "Item deleted successfully",
+    "delete_error": "Failed to delete item",
+    "delete_confirm_title": "Are you sure you want to delete this item?",
+    "delete_confirm_description": "This action cannot be undone. This will permanently delete the item.",
+    "groups": {
+      "todo": "To Do",
+      "in_progress": "In Progress",
+      "completed": "Completed"
+    }
   },
   "reminders": {
     "title": "Reminders",
     "add_reminder": "Add Reminder",
     "upcoming": "Upcoming",
-    "completed": "Completed"
+    "completed": "Completed",
+    "today": "Today",
+    "overdue": "Overdue",
+    "snooze": "Snooze",
+    "mark_complete": "Mark Complete",
+    "summary": "{{active}} active, {{completed}} completed",
+    "no_upcoming": "No upcoming reminders",
+    "today_title": "Today's Reminders",
+    "no_today": "No reminders for today",
+    "overdue_title": "Overdue Reminders",
+    "no_overdue": "No overdue reminders",
+    "no_completed": "No completed reminders",
+    "delete_confirm_title": "Are you sure you want to delete this reminder?",
+    "delete_confirm_description": "This action cannot be undone. This will permanently delete the reminder."
   },
   "analytics": {
     "title": "Analytics",
@@ -142,7 +212,26 @@
     "tasks_completed": "Tasks Completed",
     "goals_achieved": "Goals Achieved",
     "current_streaks": "Current Streaks",
-    "quickStats": "Quick Stats"
+    "quickStats": "Quick Stats",
+    "calculating": "Analytics data is being calculated...",
+    "daily_completion": "Daily Task Completion",
+    "task_count": "{{count}} tasks",
+    "tasks_by_project": "Tasks by Project",
+    "goal_progress": "Goal Progress",
+    "no_streaks": "No active streaks",
+    "last_completed": "Last completed: {{date}}",
+    "day_count": "{{count}} days",
+    "subtitle": "Track your productivity and progress over time",
+    "completion_rate": "Overall completion rate",
+    "out_of_total": "out of {{total}} total",
+    "habits_maintained": "habits maintained",
+    "tabs": {
+      "overview": "Overview",
+      "tasks": "Tasks",
+      "goals": "Goals",
+      "streaks": "Streaks",
+      "replay": "Replay"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -158,7 +247,34 @@
     "system": "System",
     "export_data": "Export Data",
     "import_data": "Import Data",
-    "reset_data": "Reset All Data"
+    "reset_data": "Reset All Data",
+    "loading": "Loading settings...",
+    "export_success": "Data exported successfully",
+    "export_error": "Failed to export data",
+    "import_success": "Data imported successfully",
+    "import_error": "Failed to import data. Please check the file format.",
+    "reset_success": "All data has been reset",
+    "reset_error": "Failed to reset data",
+    "pin_error": "Please enter a PIN first",
+    "pin_enabled": "PIN lock enabled",
+    "pin_disabled": "PIN lock disabled",
+    "subtitle": "Customize your ProductiFlow experience",
+    "productivity": {
+      "title": "Productivity",
+      "energy_mood": "Energy Level Mood",
+      "normal": "Normal",
+      "high_energy": "High-Energy",
+      "low_energy": "Low-Energy",
+      "energy_mood_description": "Sort your task list based on your current energy level."
+    },
+    "export_data_title": "Export Data",
+    "export_data_description": "Download a backup of all your tasks, goals, and settings.",
+    "export_button": "Export",
+    "import_data_title": "Import Data",
+    "import_data_description": "Upload a backup file to restore your data. This will merge with existing data.",
+    "reset_data_title": "Reset All Data",
+    "reset_data_description": "This will permanently delete all your tasks, goals, reminders, and other data. This action cannot be undone.",
+    "reset_all_data_button": "Reset All Data"
   },
   "actions": {
     "add": "Add",
@@ -235,6 +351,8 @@
       "high": "High Priority",
       "medium": "Medium Priority",
       "low": "Low Priority"
-    }
+    },
+    "infinity": "∞",
+    "work": "Work"
   }
 }

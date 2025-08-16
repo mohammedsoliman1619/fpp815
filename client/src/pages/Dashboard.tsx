@@ -159,7 +159,7 @@ export function Dashboard() {
                         {task.title}
                       </p>
                       <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-xs text-muted-foreground">Work</span>
+                        <span className="text-xs text-muted-foreground">{t('common.work')}</span>
                         {task.dueDate && (
                           <span className={`text-xs ${
                             isOverdue(task.dueDate) ? 'text-destructive' : 'text-muted-foreground'
@@ -235,7 +235,7 @@ export function Dashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-hierarchy-small font-medium">{goal.title}</p>
                       <span className="text-xs text-muted-foreground">
-                        {goal.currentValue}/{goal.targetValue || '∞'}
+                        {goal.currentValue}/{goal.targetValue || t('common.infinity')}
                       </span>
                     </div>
                     <Progress 
@@ -272,7 +272,7 @@ export function Dashboard() {
                     <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-hierarchy-small">Completed "{task.title}"</p>
+                    <p className="text-hierarchy-small">{t('dashboard.completed_task_activity', { title: task.title })}</p>
                     <p className="text-xs text-muted-foreground">
                       {formatTime(task.updatedAt)}
                     </p>
@@ -314,7 +314,7 @@ export function Dashboard() {
                         <Progress value={(day.count / 15) * 100} className="h-2" />
                       </div>
                       <span className="text-hierarchy-small font-medium">
-                        {day.count} tasks
+                        {t('analytics.task_count', { count: day.count })}
                       </span>
                     </div>
                   ))}

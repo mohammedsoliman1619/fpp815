@@ -236,14 +236,14 @@ export function Calendar() {
       }
       toast({
         title: t('actions.success'),
-        description: t('calendar.itemDeleted'),
+        description: t('calendar.delete_success'),
       });
       setSelectedItem(null);
       setIsDeleteAlertOpen(false);
     } catch (error) {
        toast({
         title: t('actions.error'),
-        description: t('calendar.deleteError'),
+        description: t('calendar.delete_error'),
         variant: 'destructive'
       });
     }
@@ -591,10 +591,10 @@ export function Calendar() {
           </div>
 
           <div className="flex items-center space-x-3">
-            <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value)} aria-label="Calendar view">
-              <ToggleGroupItem value="week" aria-label="Week view">{t('calendar.week')}</ToggleGroupItem>
-              <ToggleGroupItem value="month" aria-label="Month view">{t('calendar.month')}</ToggleGroupItem>
-              <ToggleGroupItem value="year" aria-label="Year view">{t('calendar.year')}</ToggleGroupItem>
+            <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value)} aria-label={t('calendar.view_aria_label')}>
+              <ToggleGroupItem value="week" aria-label={t('calendar.week_view_aria')}>{t('calendar.week')}</ToggleGroupItem>
+              <ToggleGroupItem value="month" aria-label={t('calendar.month_view_aria')}>{t('calendar.month')}</ToggleGroupItem>
+              <ToggleGroupItem value="year" aria-label={t('calendar.year_view_aria')}>{t('calendar.year')}</ToggleGroupItem>
             </ToggleGroup>
             <Separator orientation="vertical" className="h-6" />
             <Button variant="outline" onClick={handleAddEvent}>
@@ -675,9 +675,9 @@ export function Calendar() {
             {/* Left Panel - Items List */}
             <div className="calendar-left-panel w-96 border-r bg-gray-50 overflow-auto">
               <div className="p-6">
-                {renderGroupSection(t('dashboard.todays_tasks'), groupedItems.todo, groupedItems.todo.length)}
-                {renderGroupSection(t('tasks.status.in_progress'), groupedItems.in_progress, groupedItems.in_progress.length)}
-                {renderGroupSection(t('tasks.status.completed'), groupedItems.completed, groupedItems.completed.length)}
+                {renderGroupSection(t('calendar.groups.todo'), groupedItems.todo, groupedItems.todo.length)}
+                {renderGroupSection(t('calendar.groups.in_progress'), groupedItems.in_progress, groupedItems.in_progress.length)}
+                {renderGroupSection(t('calendar.groups.completed'), groupedItems.completed, groupedItems.completed.length)}
               </div>
             </div>
 
@@ -715,9 +715,9 @@ export function Calendar() {
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('calendar.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogTitle>{t('calendar.delete_confirm_title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('calendar.deleteConfirmDescription')}
+              {t('calendar.delete_confirm_description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -165,14 +165,14 @@ export function Reminders() {
 
               <div className="flex items-center space-x-2 mt-3">
                 {isReminderToday && !reminder.completed && (
-                  <Badge variant="default">Today</Badge>
+                  <Badge variant="default">{t('reminders.today')}</Badge>
                 )}
                 {isReminderOverdue && !reminder.completed && (
-                  <Badge variant="destructive">Overdue</Badge>
+                  <Badge variant="destructive">{t('reminders.overdue')}</Badge>
                 )}
                 {reminder.completed && (
                   <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
-                    Completed
+                    {t('reminders.completed')}
                   </Badge>
                 )}
               </div>
@@ -200,10 +200,10 @@ export function Reminders() {
           {!reminder.completed && (
             <div className="flex space-x-2 pt-3 border-t">
               <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSnooze(reminder.id)}>
-                Snooze
+                {t('reminders.snooze')}
               </Button>
               <Button size="sm" className="flex-1" onClick={() => handleToggleComplete(reminder.id)}>
-                Mark Complete
+                {t('reminders.mark_complete')}
               </Button>
             </div>
           )}
@@ -254,7 +254,7 @@ export function Reminders() {
         <div>
           <h1 className="text-hierarchy-1">{t('reminders.title')}</h1>
           <p className="text-muted-foreground">
-            {upcomingReminders.length + todayReminders.length + overdueReminders.length} active, {completedReminders.length} completed
+            {t('reminders.summary', { active: upcomingReminders.length + todayReminders.length + overdueReminders.length, completed: completedReminders.length })}
           </p>
         </div>
         <Button onClick={handleOpenCreate}>
@@ -282,8 +282,8 @@ export function Reminders() {
       <Tabs defaultValue="upcoming" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="upcoming">{t('reminders.upcoming')}</TabsTrigger>
-          <TabsTrigger value="today">Today</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsTrigger value="today">{t('reminders.today')}</TabsTrigger>
+          <TabsTrigger value="overdue">{t('reminders.overdue')}</TabsTrigger>
           <TabsTrigger value="completed">{t('reminders.completed')}</TabsTrigger>
         </TabsList>
         
@@ -291,7 +291,7 @@ export function Reminders() {
           <ReminderSection
             reminders={upcomingReminders}
             title={t('reminders.upcoming')}
-            emptyMessage="No upcoming reminders"
+            emptyMessage={t('reminders.no_upcoming')}
             icon={Bell}
           />
         </TabsContent>
@@ -299,8 +299,8 @@ export function Reminders() {
         <TabsContent value="today" className="mt-6">
           <ReminderSection
             reminders={todayReminders}
-            title="Today's Reminders"
-            emptyMessage="No reminders for today"
+            title={t('reminders.today_title')}
+            emptyMessage={t('reminders.no_today')}
             icon={Clock}
           />
         </TabsContent>
@@ -308,8 +308,8 @@ export function Reminders() {
         <TabsContent value="overdue" className="mt-6">
           <ReminderSection
             reminders={overdueReminders}
-            title="Overdue Reminders"
-            emptyMessage="No overdue reminders"
+            title={t('reminders.overdue_title')}
+            emptyMessage={t('reminders.no_overdue')}
             icon={AlertCircle}
           />
         </TabsContent>
@@ -318,7 +318,7 @@ export function Reminders() {
           <ReminderSection
             reminders={completedReminders}
             title={t('reminders.completed')}
-            emptyMessage="No completed reminders"
+            emptyMessage={t('reminders.no_completed')}
             icon={CheckCircle}
           />
         </TabsContent>
