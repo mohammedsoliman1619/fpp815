@@ -19,13 +19,15 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { TaskItem } from '@/components/tasks/TaskItem';
 import { KanbanView } from '@/components/tasks/KanbanView';
+import { TimelineView } from '@/components/tasks/TimelineView';
 import { TemplateSelectionModal } from '@/components/modals/TemplateSelectionModal';
 import {
   Plus,
   Search,
   LayoutGrid,
   List,
-  FilePlus2
+  FilePlus2,
+  Clock
 } from 'lucide-react';
 
 export function Tasks() {
@@ -103,6 +105,7 @@ export function Tasks() {
           <ToggleGroup type="single" value={view} onValueChange={(value) => value && setView(value)}>
             <ToggleGroupItem value="list" aria-label="List view"><List className="h-4 w-4" /></ToggleGroupItem>
             <ToggleGroupItem value="kanban" aria-label="Kanban view"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="timeline" aria-label="Timeline view"><Clock className="h-4 w-4" /></ToggleGroupItem>
           </ToggleGroup>
           <Button variant="outline" onClick={() => setIsTemplateModalOpen(true)}>
             <FilePlus2 className="h-4 w-4 mr-2" />
@@ -149,7 +152,7 @@ export function Tasks() {
         </CardContent>
       </Card>
 
-      {view === 'list' ? (
+      {view === 'list' && (
         <Tabs defaultValue="today" className="w-full">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="today">{t('tasks.today')}</TabsTrigger>
@@ -166,9 +169,9 @@ export function Tasks() {
           <TabsContent value="all" className="mt-6"><TaskSection tasks={allIncompleteTasks} title={t('tasks.all_tasks')} emptyMessage="No tasks found" /></TabsContent>
           <TabsContent value="completed" className="mt-6"><TaskSection tasks={completedTasks} title={t('tasks.completed')} emptyMessage="No completed tasks" /></TabsContent>
         </Tabs>
-      ) : (
-        <KanbanView />
       )}
+      {view === 'kanban' && <KanbanView />}
+      {view === 'timeline' && <TimelineView />}
 
       <TaskForm isOpen={isTaskFormOpen} onClose={handleCloseTaskForm} task={editingTask} isEditing={!!editingTask} />
       <TemplateSelectionModal
