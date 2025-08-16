@@ -54,6 +54,22 @@ export const journalEntrySchema = z.object({
   mood: z.enum(['great', 'good', 'neutral', 'bad', 'terrible']).optional(),
 });
 
+// Habit Loop Schema
+export const habitLoopStepSchema = z.object({
+  id: z.string(),
+  itemId: z.string(),
+  itemType: z.enum(['task', 'reminder']),
+  order: z.number(),
+});
+
+export const habitLoopSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  steps: z.array(habitLoopStepSchema).default([]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
 // Cross-linking Schema
 export const linkedItemsSchema = z.object({
   tasks: z.array(z.string()).default([]),
@@ -239,6 +255,12 @@ export const insertTaskTemplateSchema = taskTemplateSchema.omit({
   createdAt: true,
 });
 
+export const insertHabitLoopSchema = habitLoopSchema.omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 
 // --- TYPE EXPORTS ---
 export type Task = z.infer<typeof taskSchema>;
@@ -267,3 +289,7 @@ export type LinkedItems = z.infer<typeof linkedItemsSchema>;
 
 export type TaskTemplate = z.infer<typeof taskTemplateSchema>;
 export type InsertTaskTemplate = z.infer<typeof insertTaskTemplateSchema>;
+
+export type HabitLoop = z.infer<typeof habitLoopSchema>;
+export type InsertHabitLoop = z.infer<typeof insertHabitLoopSchema>;
+export type HabitLoopStep = z.infer<typeof habitLoopStepSchema>;

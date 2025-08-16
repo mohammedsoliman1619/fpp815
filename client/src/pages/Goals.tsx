@@ -34,9 +34,11 @@ import {
   Flame,
   Edit,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Repeat
 } from 'lucide-react';
 import { GoalFormModal } from '@/components/modals/GoalFormModal';
+import { HabitLoopForm } from '@/components/goals/HabitLoopForm';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,11 +52,16 @@ import {
 
 export function Goals() {
   const { t } = useTranslation();
-  const { goals, createGoal, updateGoal, deleteGoal, updateGoalProgress } = useAppStore();
+  const {
+    goals, createGoal, updateGoal, deleteGoal, updateGoalProgress,
+    habitLoops, createHabitLoop, updateHabitLoop, deleteHabitLoop
+  } = useAppStore();
   const [isGoalFormOpen, setIsGoalFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | undefined>(undefined);
   const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showHabitLoopForm, setShowHabitLoopForm] = useState(false);
+  const [editingLoop, setEditingLoop] = useState<any>(null);
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -135,6 +142,16 @@ export function Goals() {
       await deleteGoal(goalToDelete.id);
       setGoalToDelete(null);
     }
+  };
+
+  const handleHabitLoopSubmit = async (data: any) => {
+    if (editingLoop) {
+      await updateHabitLoop(editingLoop.id, data);
+    } else {
+      await createHabitLoop(data);
+    }
+    setEditingLoop(null);
+    setShowHabitLoopForm(false);
   };
 
   const GoalCard = ({ goal }: { goal: Goal }) => {
@@ -293,9 +310,10 @@ export function Goals() {
 
       {/* Goals Tabs */}
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="active">Active</TabsTrigger>
           <TabsTrigger value="habits">Habits</TabsTrigger>
+          <TabsTrigger value="loops">Loops</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
         </TabsList>
         
@@ -346,6 +364,60 @@ export function Goals() {
               {completedGoals.map(goal => (
                 <GoalCard key={goal.id} goal={goal} />
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="loops" className="mt-6">
+          {showHabitLoopForm ? (
+            <HabitLoopForm
+              loop={editingLoop}
+              onSubmit={handleHabitLoopSubmit}
+              onCancel={() => {
+                setShowHabitLoopForm(false);
+                setEditingLoop(null);
+              }}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button onClick={() => {
+                  setEditingLoop(null);
+                  setShowHabitLoopForm(true);
+                }}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Loop
+                </Button>
+              </div>
+              {habitLoops.length === 0 ? (
+                 <Card>
+                  <CardContent className="text-center py-12">
+                    <Repeat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No habit loops created yet.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  {habitLoops.map(loop => (
+                    <Card key={loop.id}>
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <span className="font-semibold">{loop.name}</span>
+                        <div>
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setEditingLoop(loop);
+                            setShowHabitLoopForm(true);
+                          }}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => deleteHabitLoop(loop.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
