@@ -68,6 +68,10 @@ export function Settings() {
     updateSettings({ language: lang });
   };
 
+  const handleMoodChange = (mood: string) => {
+    updateSettings({ mood });
+  };
+
 
 
   const handleExportData = async () => {
@@ -204,6 +208,34 @@ export function Settings() {
                 <SelectItem value="system">{t('settings.system')}</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Productivity Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <SettingsIcon className="w-5 h-5" />
+            <span>Productivity</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Energy Level Mood</Label>
+             <Select value={settings.mood || 'normal'} onValueChange={handleMoodChange}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="high-energy">High-Energy</SelectItem>
+                <SelectItem value="low-energy">Low-Energy</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              Sort your task list based on your current energy level.
+            </p>
           </div>
         </CardContent>
       </Card>

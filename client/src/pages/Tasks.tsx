@@ -34,7 +34,7 @@ import {
 
 export function Tasks() {
   const { t } = useTranslation();
-  const { tasks, projects } = useAppStore();
+  const { tasks, projects, settings } = useAppStore();
   const [view, setView] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProject, setFilterProject] = useState<string>('all');
@@ -74,12 +74,38 @@ export function Tasks() {
     return matchesSearch && matchesProject && matchesPriority && matchesStatus;
   });
 
-  const todayTasks = filteredTasks.filter(task => !task.completed && task.dueDate && isDueToday(task.dueDate));
-  const upcomingTasks = filteredTasks.filter(task => !task.completed && task.dueDate && !isDueToday(task.dueDate) && !isOverdue(task.dueDate));
-  const overdueTasks = filteredTasks.filter(task => !task.completed && task.dueDate && isOverdue(task.dueDate));
-  const completedTasks = filteredTasks.filter(task => task.completed);
-  const allIncompleteTasks = filteredTasks.filter(task => !task.completed);
-  const inProgressTasks = filteredTasks.filter(task => task.status === 'in-progress');
+  const sortedTasks = useMemo(() => {
+    const sortable = [...filteredTasks];
+    const mood = settings?.mood || 'normal';
+
+    if (mood === 'normal') {
+      // Default sort: due date ascending, then priority
+      return sortable.sort((a, b) => {
+        if (a.dueDate && b.dueDate) return a.dueDate.getTime() - b.dueDate.getTime();
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return a.priority.localeCompare(b.priority);
+      });
+    }
+
+    const priorityOrder = { P1: 1, P2: 2, P3: 3, P4: 4 };
+    if (mood === 'high-energy') {
+      return sortable.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+    }
+    if (mood === 'low-energy') {
+      return sortable.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
+    }
+
+    return sortable;
+  }, [filteredTasks, settings?.mood]);
+
+  const todayTasks = sortedTasks.filter(task => !task.completed && task.dueDate && isDueToday(task.dueDate));
+  const upcomingTasks = sortedTasks.filter(task => !task.completed && task.dueDate && !isDueToday(task.dueDate) && !isOverdue(task.dueDate));
+  const overdueTasks = sortedTasks.filter(task => !task.completed && task.dueDate && isOverdue(task.dueDate));
+  const completedTasks = sortedTasks.filter(task => task.completed);
+  const noDueDateTasks = sortedTasks.filter(task => !task.dueDate && !task.completed);
+  const inProgressTasks = sortedTasks.filter(task => task.status === 'in-progress');
+  const allIncompleteTasks = sortedTasks.filter(task => !task.completed);
 
   const TaskSection = ({ tasks, title, emptyMessage }: { tasks: Task[]; title: string; emptyMessage: string; }) => (
     <Card>

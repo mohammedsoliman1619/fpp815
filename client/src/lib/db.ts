@@ -22,6 +22,7 @@ export interface Settings {
   id: string;
   theme: 'light' | 'dark' | 'system';
   language: string;
+  mood: 'normal' | 'high-energy' | 'low-energy';
   dateFormat: string;
   timeFormat: '12h' | '24h';
   firstDayOfWeek: number;
@@ -95,6 +96,7 @@ export class ProductiFlowDB extends Dexie {
             id: '1',
             theme: 'system',
             language: 'en',
+            mood: 'normal',
             dateFormat: 'MM/dd/yyyy',
             timeFormat: '12h',
             firstDayOfWeek: 0,
