@@ -20,6 +20,7 @@ import { TaskForm } from '@/components/tasks/TaskForm';
 import { TaskItem } from '@/components/tasks/TaskItem';
 import { KanbanView } from '@/components/tasks/KanbanView';
 import { TimelineView } from '@/components/tasks/TimelineView';
+import { PriorityBoardView } from '@/components/tasks/PriorityBoardView';
 import { TemplateSelectionModal } from '@/components/modals/TemplateSelectionModal';
 import {
   Plus,
@@ -27,7 +28,8 @@ import {
   LayoutGrid,
   List,
   FilePlus2,
-  Clock
+  Clock,
+  Signal
 } from 'lucide-react';
 
 export function Tasks() {
@@ -106,6 +108,7 @@ export function Tasks() {
             <ToggleGroupItem value="list" aria-label="List view"><List className="h-4 w-4" /></ToggleGroupItem>
             <ToggleGroupItem value="kanban" aria-label="Kanban view"><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
             <ToggleGroupItem value="timeline" aria-label="Timeline view"><Clock className="h-4 w-4" /></ToggleGroupItem>
+            <ToggleGroupItem value="priority" aria-label="Priority board view"><Signal className="h-4 w-4" /></ToggleGroupItem>
           </ToggleGroup>
           <Button variant="outline" onClick={() => setIsTemplateModalOpen(true)}>
             <FilePlus2 className="h-4 w-4 mr-2" />
@@ -172,6 +175,7 @@ export function Tasks() {
       )}
       {view === 'kanban' && <KanbanView />}
       {view === 'timeline' && <TimelineView />}
+      {view === 'priority' && <PriorityBoardView />}
 
       <TaskForm isOpen={isTaskFormOpen} onClose={handleCloseTaskForm} task={editingTask} isEditing={!!editingTask} />
       <TemplateSelectionModal
