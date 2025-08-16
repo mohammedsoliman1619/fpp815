@@ -57,11 +57,15 @@ interface AppStore {
   isQuickAddOpen: boolean;
   isMobileMenuOpen: boolean;
   isLoading: boolean;
+  isFocusModeActive: boolean;
+  focusedItemId: string | null;
 
   // Actions
   setCurrentPage: (page: string) => void;
   setQuickAddOpen: (open: boolean) => void;
   setMobileMenuOpen: (open: boolean) => void;
+  enterFocusMode: (itemId?: string) => void;
+  exitFocusMode: () => void;
 
   // Data Actions
   loadTasks: () => Promise<void>;
@@ -129,11 +133,33 @@ export const useAppStore = create<AppStore>()(
     isQuickAddOpen: false,
     isMobileMenuOpen: false,
     isLoading: false,
+    isFocusModeActive: false,
+    focusedItemId: null,
 
     // UI Actions
     setCurrentPage: (page) => set({ currentPage: page }),
     setQuickAddOpen: (open) => set({ isQuickAddOpen: open }),
     setMobileMenuOpen: (open) => set({ isMobileMenuOpen: open }),
+    enterFocusMode: (itemId) => {
+      if (itemId) {
+        set({ isFocusModeActive: true, focusedItemId: itemId });
+      } else {
+        // Basic "smart" selection: find the first incomplete task due today with the highest priority
+        const tasks = get().tasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate).toDateString() === new Date().toDateString());
+        if (tasks.length > 0) {
+          tasks.sort((a, b) => a.priority.localeCompare(b.priority));
+          set({ isFocusModeActive: true, focusedItemId: tasks[0].id });
+        } else {
+          // Fallback: find the first incomplete task
+          const firstIncomplete = get().tasks.find(t => !t.completed);
+          if (firstIncomplete) {
+            set({ isFocusModeActive: true, focusedItemId: firstIncomplete.id });
+          }
+        }
+      }
+    },
+    exitFocusMode: () => set({ isFocusModeActive: false, focusedItemId: null }),
+
 
     // Data Loading Actions
     loadTasks: async () => {

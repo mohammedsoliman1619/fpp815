@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { QuickAddModal } from '@/components/modals/QuickAddModal';
+import { FocusView } from './FocusView';
 import { useTranslation } from 'react-i18next';
 
 interface AppLayoutProps {
@@ -46,6 +47,7 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       </main>
 
       <QuickAddModal />
+      <FocusView />
     </div>
   );
 }
