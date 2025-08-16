@@ -323,20 +323,26 @@ export const useAppStore = create<AppStore>()(
 
     // Task Actions
     createTask: async (taskData) => {
-      await dbUtils.createTask(taskData);
-      await get().loadTasks();
+      const newTask = await dbUtils.createTask(taskData);
+      set((state) => ({ tasks: [...state.tasks, newTask] }));
       await get().loadAnalytics();
     },
 
     updateTask: async (id, updates) => {
       await dbUtils.updateTask(id, updates);
-      await get().loadTasks();
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === id ? { ...task, ...updates } : task
+        ),
+      }));
       await get().loadAnalytics();
     },
 
     deleteTask: async (id) => {
       await dbUtils.deleteTask(id);
-      await get().loadTasks();
+      set((state) => ({
+        tasks: state.tasks.filter((task) => task.id !== id),
+      }));
       await get().loadAnalytics();
     },
 
@@ -375,26 +381,32 @@ export const useAppStore = create<AppStore>()(
 
     // Project Actions
     createProject: async (projectData) => {
-      await dbUtils.createProject(projectData);
-      await get().loadProjects();
+      const newProject = await dbUtils.createProject(projectData);
+      set((state) => ({ projects: [...state.projects, newProject] }));
     },
 
     // Goal Actions
     createGoal: async (goalData) => {
-      await dbUtils.createGoal(goalData);
-      await get().loadGoals();
+      const newGoal = await dbUtils.createGoal(goalData);
+      set((state) => ({ goals: [...state.goals, newGoal] }));
       await get().loadAnalytics();
     },
 
     updateGoal: async (id, updates) => {
       await dbUtils.updateGoal(id, updates);
-      await get().loadGoals();
+      set((state) => ({
+        goals: state.goals.map((goal) =>
+          goal.id === id ? { ...goal, ...updates } : goal
+        ),
+      }));
       await get().loadAnalytics();
     },
 
     deleteGoal: async (id) => {
       await db.goals.delete(id);
-      await get().loadGoals();
+      set((state) => ({
+        goals: state.goals.filter((goal) => goal.id !== id),
+      }));
       await get().loadAnalytics();
     },
 
@@ -422,18 +434,24 @@ export const useAppStore = create<AppStore>()(
 
     // Reminder Actions
     createReminder: async (reminderData) => {
-      await dbUtils.createReminder(reminderData);
-      await get().loadReminders();
+      const newReminder = await dbUtils.createReminder(reminderData);
+      set((state) => ({ reminders: [...state.reminders, newReminder] }));
     },
 
     updateReminder: async (id, updates) => {
       await db.reminders.update(id, updates);
-      await get().loadReminders();
+      set((state) => ({
+        reminders: state.reminders.map((reminder) =>
+          reminder.id === id ? { ...reminder, ...updates } : reminder
+        ),
+      }));
     },
 
     deleteReminder: async (id: string) => {
       await db.reminders.delete(id);
-      await get().loadReminders();
+      set((state) => ({
+        reminders: state.reminders.filter((reminder) => reminder.id !== id),
+      }));
     },
 
     toggleReminderCompletion: async (id: string) => {
@@ -548,18 +566,20 @@ export const useAppStore = create<AppStore>()(
 
     // Calendar Actions
     createCalendarEvent: async (eventData) => {
-      await dbUtils.createCalendarEvent(eventData);
-      await get().loadCalendarEvents();
+      const newEvent = await dbUtils.createCalendarEvent(eventData);
+      set((state) => ({ calendarEvents: [...state.calendarEvents, newEvent] }));
     },
 
     updateCalendarEvent: async (id: string, updates: Partial<CalendarEvent>) => {
       try {
         await db.ready;
-        await db.calendarEvents.update(id, {
-          ...updates,
-          updatedAt: new Date()
-        });
-        await get().loadCalendarEvents();
+        const finalUpdates = { ...updates, updatedAt: new Date() };
+        await db.calendarEvents.update(id, finalUpdates);
+        set((state) => ({
+            calendarEvents: state.calendarEvents.map((event) =>
+                event.id === id ? { ...event, ...finalUpdates } : event
+            ),
+        }));
       } catch (error) {
         console.error('Error updating calendar event:', error);
       }
@@ -569,7 +589,9 @@ export const useAppStore = create<AppStore>()(
       try {
         await db.ready;
         await db.calendarEvents.delete(id);
-        await get().loadCalendarEvents();
+        set((state) => ({
+            calendarEvents: state.calendarEvents.filter((event) => event.id !== id),
+        }));
       } catch (error) {
         console.error('Error deleting calendar event:', error);
       }
@@ -577,18 +599,25 @@ export const useAppStore = create<AppStore>()(
 
     // Habit Loop Actions
     createHabitLoop: async (data) => {
-      const now = new Date();
-      const newLoop = { ...data, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
-      await db.habitLoops.add(newLoop);
-      await get().loadHabitLoops();
+        const now = new Date();
+        const newLoop = { ...data, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
+        await db.habitLoops.add(newLoop);
+        set((state) => ({ habitLoops: [...state.habitLoops, newLoop] }));
     },
     updateHabitLoop: async (id, updates) => {
-      await db.habitLoops.update(id, { ...updates, updatedAt: new Date() });
-      await get().loadHabitLoops();
+        const finalUpdates = { ...updates, updatedAt: new Date() };
+        await db.habitLoops.update(id, finalUpdates);
+        set((state) => ({
+            habitLoops: state.habitLoops.map((loop) =>
+                loop.id === id ? { ...loop, ...finalUpdates } : loop
+            ),
+        }));
     },
     deleteHabitLoop: async (id) => {
-      await db.habitLoops.delete(id);
-      await get().loadHabitLoops();
+        await db.habitLoops.delete(id);
+        set((state) => ({
+            habitLoops: state.habitLoops.filter((loop) => loop.id !== id),
+        }));
     },
 
     // Settings Actions

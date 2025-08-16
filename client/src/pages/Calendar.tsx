@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,10 +110,10 @@ export function Calendar() {
   const eventInstances = generateEventInstances(calendarEvents, weekStartDate, weekEndDate);
 
   // Get calendar items
-  const calendarItems = convertToCalendarItems(tasks, eventInstances, goals, reminders, []);
+  const calendarItems = useMemo(() => convertToCalendarItems(tasks, eventInstances, goals, reminders, []), [tasks, eventInstances, goals, reminders]);
 
   // Filter items
-  const filteredItems = calendarItems.filter(item => {
+  const filteredItems = useMemo(() => calendarItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesProject = filterProject === 'all' || item.project === filterProject;
@@ -128,76 +128,76 @@ export function Calendar() {
     const matchesDate = !itemDate || isSameDay(itemDate, selectedDate);
 
     return matchesSearch && matchesProject && matchesType && matchesStatus && matchesDate;
-  });
+  }), [calendarItems, searchQuery, filterProject, filterType, filterStatus, selectedDate]);
 
   // Group items by status
-  const groupedItems = {
+  const groupedItems = useMemo(() => ({
     todo: filteredItems.filter(item => !item.completed && item.status !== 'completed' && item.status !== 'in_progress'),
     in_progress: filteredItems.filter(item => item.status === 'in_progress'),
     completed: filteredItems.filter(item => item.completed || item.status === 'completed')
-  };
+  }), [filteredItems]);
 
   // Get projects for filter
-  const projects = Array.from(new Set(calendarItems.map(item => item.project).filter(Boolean)));
+  const projects = useMemo(() => Array.from(new Set(calendarItems.map(item => item.project).filter(Boolean))), [calendarItems]);
 
   // Generate week dates
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i));
 
   // Get dates with events/tasks for visual indicators
-  const datesWithItems = new Set(
+  const datesWithItems = useMemo(() => new Set(
     calendarItems
       .map(item => {
         const itemDate = item.date ? new Date(item.date) : (item.startTime ? new Date(item.startTime) : null);
         return itemDate ? format(itemDate, 'yyyy-MM-dd') : null;
       })
       .filter(Boolean)
-  );
+  ), [calendarItems]);
 
   // Date navigation handlers
-  const navigateToPreviousWeek = () => {
+  const navigateToPreviousWeek = useCallback(() => {
     setWeekStartDate(prev => subDays(prev, 7));
-  };
+  }, []);
 
-  const navigateToNextWeek = () => {
+  const navigateToNextWeek = useCallback(() => {
     setWeekStartDate(prev => addDays(prev, 7));
-  };
+  }, []);
 
-  const navigateToToday = () => {
+  const navigateToToday = useCallback(() => {
     const today = new Date();
     setSelectedDate(today);
     setWeekStartDate(startOfWeek(today, { weekStartsOn: 1 }));
-  };
+  }, []);
 
-  const handleDateSelect = (date: Date) => {
+  const handleDateSelect = useCallback((date: Date) => {
     setSelectedDate(date);
     setSelectedItem(null); // Clear selected item when changing dates
-  };
+  }, []);
 
   // Handlers
-  const handleItemClick = (item: CalendarItem) => {
+  const handleItemClick = useCallback((item: CalendarItem) => {
     setSelectedItem(item);
-  };
+  }, []);
 
-  const handleAddTask = () => {
+  const handleAddTask = useCallback(() => {
     setEditingItem(null);
     setIsTaskFormOpen(true);
-  };
+  }, []);
 
-  const handleAddEvent = () => {
+  const handleAddEvent = useCallback(() => {
     setEditingItem(null);
     setIsEventFormOpen(true);
-  };
+  }, []);
 
-  const handleEditItem = (item: CalendarItem) => {
+  const handleEditItem = useCallback((item: CalendarItem) => {
     setEditingItem(item.originalItem);
     if (item.type === 'task') {
       setIsTaskFormOpen(true);
     } else if (item.type === 'event') {
       setIsEventFormOpen(true);
     }
-  };
+  }, []);
 
-  const handleToggleComplete = async (item: CalendarItem) => {
+  const handleToggleComplete = useCallback(async (item: CalendarItem) => {
     try {
       if (item.type === 'task') {
         await updateTask(item.id, { 
@@ -216,9 +216,9 @@ export function Calendar() {
         variant: 'destructive'
       });
     }
-  };
+  }, [t, toast, updateTask]);
 
-  const handleDeleteItem = async () => {
+  const handleDeleteItem = useCallback(async () => {
     if (!selectedItem) return;
 
     try {
@@ -247,7 +247,7 @@ export function Calendar() {
         variant: 'destructive'
       });
     }
-  };
+  }, [selectedItem, t, toast, deleteTask, deleteCalendarEvent, deleteReminder]);
 
   const renderItemCard = (item: CalendarItem) => {
     const StatusIcon = getStatusIcon(item.status || '', item.completed);
