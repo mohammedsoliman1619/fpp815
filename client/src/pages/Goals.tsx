@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/lib/store';
-import { Goal } from '@/types';
+import { Goal } from '@shared/schema';
 import { formatDate } from '@/utils/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,14 +33,35 @@ import {
   CheckCircle,
   Flame,
   Edit,
-  MoreVertical
+  Trash2,
+  MoreVertical,
+  Repeat
 } from 'lucide-react';
+import { GoalFormModal } from '@/components/modals/GoalFormModal';
+import { HabitLoopForm } from '@/components/goals/HabitLoopForm';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export function Goals() {
   const { t } = useTranslation();
-  const { goals, createGoal, updateGoal, updateGoalProgress } = useAppStore();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const {
+    goals, createGoal, updateGoal, deleteGoal, updateGoalProgress,
+    habitLoops, createHabitLoop, updateHabitLoop, deleteHabitLoop
+  } = useAppStore();
+  const [isGoalFormOpen, setIsGoalFormOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<Goal | undefined>(undefined);
+  const [goalToDelete, setGoalToDelete] = useState<Goal | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showHabitLoopForm, setShowHabitLoopForm] = useState(false);
+  const [editingLoop, setEditingLoop] = useState<any>(null);
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -98,6 +119,41 @@ export function Goals() {
     await updateGoalProgress(goalId, newValue);
   };
 
+  const handleOpenCreateGoal = () => {
+    setEditingGoal(undefined);
+    setIsGoalFormOpen(true);
+  };
+
+  const handleOpenEditGoal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setIsGoalFormOpen(true);
+  };
+
+  const handleGoalSubmit = async (data: any) => {
+    if (editingGoal) {
+      await updateGoal(editingGoal.id, data);
+    } else {
+      await createGoal(data);
+    }
+  };
+
+  const handleDeleteGoal = async () => {
+    if (goalToDelete) {
+      await deleteGoal(goalToDelete.id);
+      setGoalToDelete(null);
+    }
+  };
+
+  const handleHabitLoopSubmit = async (data: any) => {
+    if (editingLoop) {
+      await updateHabitLoop(editingLoop.id, data);
+    } else {
+      await createHabitLoop(data);
+    }
+    setEditingLoop(null);
+    setShowHabitLoopForm(false);
+  };
+
   const GoalCard = ({ goal }: { goal: Goal }) => {
     const progressPercentage = goal.targetValue 
       ? Math.min((goal.currentValue / goal.targetValue) * 100, 100)
@@ -126,14 +182,28 @@ export function Goals() {
                 </Badge>
                 {goal.isHabit && (
                   <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                    Habit
+                    {t('goals.habit')}
                   </Badge>
                 )}
               </div>
             </div>
-            <Button variant="ghost" size="sm">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleOpenEditGoal(goal)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  {t('actions.edit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setGoalToDelete(goal)} className="text-red-500">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t('actions.delete')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {goal.isHabit ? (
@@ -152,7 +222,7 @@ export function Goals() {
                   onClick={() => handleProgressUpdate(goal.id, goal.currentValue + 1)}
                   className="flex-1"
                 >
-                  Mark Complete Today
+                  {t('goals.mark_complete_today')}
                 </Button>
               </div>
             </div>
@@ -168,14 +238,14 @@ export function Goals() {
               {isCompleted && (
                 <div className="flex items-center space-x-2 text-emerald-600">
                   <CheckCircle className="w-4 h-4" />
-                  <span className="text-hierarchy-small font-medium">Completed!</span>
+                  <span className="text-hierarchy-small font-medium">{t('goals.completed_message')}</span>
                 </div>
               )}
               {goal.deadline && (
                 <div className="flex items-center space-x-2 text-muted-foreground">
                   <Calendar className="w-4 h-4" />
                   <span className="text-hierarchy-small">
-                    Due {formatDate(goal.deadline)}
+                    {t('goals.due_date', { date: formatDate(goal.deadline) })}
                   </span>
                 </div>
               )}
@@ -204,124 +274,6 @@ export function Goals() {
     );
   };
 
-  const CreateGoalDialog = () => (
-    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          {t('goals.add_goal')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('goals.add_goal')}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleCreateGoal} className="space-y-4">
-          <div>
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              value={newGoal.title}
-              onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
-              placeholder="Enter goal title"
-              required
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={newGoal.description}
-              onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
-              placeholder="Optional description"
-              rows={3}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="category">Category</Label>
-            <Select 
-              value={newGoal.category} 
-              onValueChange={(value) => setNewGoal({ ...newGoal, category: value })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="personal">Personal</SelectItem>
-                <SelectItem value="health">Health</SelectItem>
-                <SelectItem value="work">Work</SelectItem>
-                <SelectItem value="learning">Learning</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="isHabit"
-              checked={newGoal.isHabit}
-              onChange={(e) => setNewGoal({ ...newGoal, isHabit: e.target.checked })}
-              className="rounded"
-            />
-            <Label htmlFor="isHabit">This is a habit (daily/recurring goal)</Label>
-          </div>
-
-          {!newGoal.isHabit && (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label htmlFor="targetValue">Target</Label>
-                  <Input
-                    id="targetValue"
-                    type="number"
-                    value={newGoal.targetValue}
-                    onChange={(e) => setNewGoal({ ...newGoal, targetValue: parseInt(e.target.value) || 0 })}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="unit">Unit</Label>
-                  <Input
-                    id="unit"
-                    value={newGoal.unit}
-                    onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
-                    placeholder="books, hours, etc."
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="deadline">Deadline</Label>
-                <Input
-                  id="deadline"
-                  type="date"
-                  value={newGoal.deadline}
-                  onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })}
-                />
-              </div>
-            </>
-          )}
-
-          <div className="flex space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => setIsCreateDialogOpen(false)}
-            >
-              {t('actions.cancel')}
-            </Button>
-            <Button type="submit" className="flex-1">
-              {t('actions.add')}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -329,10 +281,13 @@ export function Goals() {
         <div>
           <h1 className="text-hierarchy-1">{t('goals.title')}</h1>
           <p className="text-muted-foreground">
-            {activeGoals.length} active, {completedGoals.length} completed
+            {t('goals.summary', { active: activeGoals.length, completed: completedGoals.length })}
           </p>
         </div>
-        <CreateGoalDialog />
+        <Button onClick={handleOpenCreateGoal}>
+          <Plus className="w-4 h-4 mr-2" />
+          {t('goals.add_goal')}
+        </Button>
       </div>
 
       {/* Category Filter */}
@@ -340,14 +295,14 @@ export function Goals() {
         <CardContent className="p-4">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="All Categories" />
+              <SelectValue placeholder={t('goals.all_categories')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-              <SelectItem value="health">Health</SelectItem>
-              <SelectItem value="work">Work</SelectItem>
-              <SelectItem value="learning">Learning</SelectItem>
+              <SelectItem value="all">{t('goals.all_categories')}</SelectItem>
+              <SelectItem value="personal">{t('goals.categories.personal')}</SelectItem>
+              <SelectItem value="health">{t('goals.categories.health')}</SelectItem>
+              <SelectItem value="work">{t('goals.categories.work')}</SelectItem>
+              <SelectItem value="learning">{t('goals.categories.learning')}</SelectItem>
             </SelectContent>
           </Select>
         </CardContent>
@@ -355,10 +310,11 @@ export function Goals() {
 
       {/* Goals Tabs */}
       <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="habits">Habits</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="active">{t('goals.tabs.active')}</TabsTrigger>
+          <TabsTrigger value="habits">{t('goals.tabs.habits')}</TabsTrigger>
+          <TabsTrigger value="loops">{t('goals.tabs.loops')}</TabsTrigger>
+          <TabsTrigger value="completed">{t('goals.tabs.completed')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="active" className="mt-6">
@@ -383,7 +339,7 @@ export function Goals() {
             <Card>
               <CardContent className="text-center py-12">
                 <Flame className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No habits created yet</p>
+                <p className="text-muted-foreground">{t('goals.no_habits')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -400,7 +356,7 @@ export function Goals() {
             <Card>
               <CardContent className="text-center py-12">
                 <CheckCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No completed goals yet</p>
+                <p className="text-muted-foreground">{t('goals.no_completed_goals')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -411,7 +367,85 @@ export function Goals() {
             </div>
           )}
         </TabsContent>
+
+        <TabsContent value="loops" className="mt-6">
+          {showHabitLoopForm ? (
+            <HabitLoopForm
+              loop={editingLoop}
+              onSubmit={handleHabitLoopSubmit}
+              onCancel={() => {
+                setShowHabitLoopForm(false);
+                setEditingLoop(null);
+              }}
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button onClick={() => {
+                  setEditingLoop(null);
+                  setShowHabitLoopForm(true);
+                }}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  {t('goals.create_loop')}
+                </Button>
+              </div>
+              {habitLoops.length === 0 ? (
+                 <Card>
+                  <CardContent className="text-center py-12">
+                    <Repeat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">{t('goals.no_habit_loops')}</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  {habitLoops.map(loop => (
+                    <Card key={loop.id}>
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <span className="font-semibold">{loop.name}</span>
+                        <div>
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setEditingLoop(loop);
+                            setShowHabitLoopForm(true);
+                          }}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => deleteHabitLoop(loop.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      <GoalFormModal
+        isOpen={isGoalFormOpen}
+        onClose={() => setIsGoalFormOpen(false)}
+        onSubmit={handleGoalSubmit}
+        goal={editingGoal}
+      />
+
+      <AlertDialog open={!!goalToDelete} onOpenChange={() => setGoalToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('goals.delete_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('goals.delete_confirm_description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteGoal}>
+              {t('actions.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

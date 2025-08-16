@@ -52,7 +52,7 @@ export function Settings() {
       <div className="space-y-6">
         <div>
           <h1 className="text-hierarchy-1">{t('settings.title')}</h1>
-          <p className="text-muted-foreground">Loading settings...</p>
+          <p className="text-muted-foreground">{t('settings.loading')}</p>
         </div>
       </div>
     );
@@ -66,6 +66,10 @@ export function Settings() {
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
     updateSettings({ language: lang });
+  };
+
+  const handleMoodChange = (mood: string) => {
+    updateSettings({ mood });
   };
 
 
@@ -84,14 +88,14 @@ export function Settings() {
       URL.revokeObjectURL(url);
       
       toast({
-        title: "Success",
-        description: "Data exported successfully",
+        title: t('actions.success'),
+        description: t('settings.export_success'),
       });
       setExportDialogOpen(false);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to export data",
+        title: t('actions.error'),
+        description: t('settings.export_error'),
         variant: "destructive",
       });
     }
@@ -106,8 +110,8 @@ export function Settings() {
       await dbUtils.importData(text);
       
       toast({
-        title: "Success",
-        description: "Data imported successfully",
+        title: t('actions.success'),
+        description: t('settings.import_success'),
       });
       setImportDialogOpen(false);
       
@@ -115,8 +119,8 @@ export function Settings() {
       window.location.reload();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to import data. Please check the file format.",
+        title: t('actions.error'),
+        description: t('settings.import_error'),
         variant: "destructive",
       });
     }
@@ -126,8 +130,8 @@ export function Settings() {
     try {
       await dbUtils.resetData();
       toast({
-        title: "Success",
-        description: "All data has been reset",
+        title: t('actions.success'),
+        description: t('settings.reset_success'),
       });
       setIsResetDialogOpen(false);
       
@@ -135,8 +139,8 @@ export function Settings() {
       window.location.reload();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to reset data",
+        title: t('actions.error'),
+        description: t('settings.reset_error'),
         variant: "destructive",
       });
     }
@@ -145,8 +149,8 @@ export function Settings() {
   const handlePinToggle = (enabled: boolean) => {
     if (enabled && !pinValue) {
       toast({
-        title: "Error",
-        description: "Please enter a PIN first",
+        title: t('actions.error'),
+        description: t('settings.pin_error'),
         variant: "destructive",
       });
       return;
@@ -162,13 +166,13 @@ export function Settings() {
 
     if (enabled) {
       toast({
-        title: "Success",
-        description: "PIN lock enabled",
+        title: t('actions.success'),
+        description: t('settings.pin_enabled'),
       });
     } else {
       toast({
-        title: "Success",
-        description: "PIN lock disabled",
+        title: t('actions.success'),
+        description: t('settings.pin_disabled'),
       });
     }
   };
@@ -179,7 +183,7 @@ export function Settings() {
       <div>
         <h1 className="text-hierarchy-1">{t('settings.title')}</h1>
         <p className="text-muted-foreground">
-          Customize your ProductiFlow experience
+          {t('settings.subtitle')}
         </p>
       </div>
 
@@ -204,6 +208,34 @@ export function Settings() {
                 <SelectItem value="system">{t('settings.system')}</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Productivity Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <SettingsIcon className="w-5 h-5" />
+            <span>{t('settings.productivity.title')}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>{t('settings.productivity.energy_mood')}</Label>
+             <Select value={settings.mood || 'normal'} onValueChange={handleMoodChange}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="normal">{t('settings.productivity.normal')}</SelectItem>
+                <SelectItem value="high-energy">{t('settings.productivity.high_energy')}</SelectItem>
+                <SelectItem value="low-energy">{t('settings.productivity.low_energy')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.productivity.energy_mood_description')}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -257,17 +289,17 @@ export function Settings() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Export Data</DialogTitle>
+                  <DialogTitle>{t('settings.export_data_title')}</DialogTitle>
                   <DialogDescription>
-                    Download a backup of all your tasks, goals, and settings.
+                    {t('settings.export_data_description')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex space-x-3 pt-4">
                   <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
-                    Cancel
+                    {t('actions.cancel')}
                   </Button>
                   <Button onClick={handleExportData}>
-                    Export
+                    {t('settings.export_button')}
                   </Button>
                 </div>
               </DialogContent>
@@ -283,20 +315,22 @@ export function Settings() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Import Data</DialogTitle>
+                  <DialogTitle>{t('settings.import_data_title')}</DialogTitle>
                   <DialogDescription>
-                    Upload a backup file to restore your data. This will merge with existing data.
+                    {t('settings.import_data_description')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
+                  <Label htmlFor="import-file" className="sr-only">{t('settings.import_data_title')}</Label>
                   <Input
+                    id="import-file"
                     type="file"
                     accept=".json"
                     onChange={handleImportData}
                   />
                   <div className="flex space-x-3">
                     <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
-                      Cancel
+                      {t('actions.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -313,17 +347,17 @@ export function Settings() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Reset All Data</DialogTitle>
+                  <DialogTitle>{t('settings.reset_data_title')}</DialogTitle>
                   <DialogDescription>
-                    This will permanently delete all your tasks, goals, reminders, and other data. This action cannot be undone.
+                    {t('settings.reset_data_description')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex space-x-3 pt-4">
                   <Button variant="outline" onClick={() => setIsResetDialogOpen(false)}>
-                    Cancel
+                    {t('actions.cancel')}
                   </Button>
                   <Button variant="destructive" onClick={handleResetData}>
-                    Reset All Data
+                    {t('settings.reset_all_data_button')}
                   </Button>
                 </div>
               </DialogContent>

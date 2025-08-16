@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
 import { nanoid } from 'nanoid';
@@ -56,9 +56,7 @@ export function GoalFormModal({ isOpen, onClose, goal, onSubmit }: GoalFormModal
   const { t } = useTranslation();
   const { tasks, reminders, calendarEvents } = useAppStore();
   const [newTag, setNewTag] = useState('');
-  const [newMilestone, setNewMilestone] = useState('');
-  const [milestoneValue, setMilestoneValue] = useState('');
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [newJournalEntry, setNewJournalEntry] = useState('');
 
   const form = useForm<InsertGoal>({
     resolver: zodResolver(insertGoalSchema),
@@ -73,28 +71,28 @@ export function GoalFormModal({ isOpen, onClose, goal, onSubmit }: GoalFormModal
       streakCount: 0,
       milestones: [],
       linkedItems: { tasks: [], goals: [], reminders: [], events: [] },
+      journalEntries: [],
     }
+  });
+
+  const { fields: milestoneFields, append: appendMilestone, remove: removeMilestone, update: updateMilestone } = useFieldArray({
+    control: form.control,
+    name: "milestones",
+  });
+
+  const { fields: journalFields, append: appendJournalEntry } = useFieldArray({
+    control: form.control,
+    name: "journalEntries",
   });
 
   useEffect(() => {
     if (goal) {
       form.reset({
-        title: goal.title,
+        ...goal,
         description: goal.description || '',
-        category: goal.category,
-        targetValue: goal.targetValue,
-        currentValue: goal.currentValue,
         unit: goal.unit || '',
-        deadline: goal.deadline,
-        startDate: goal.startDate,
-        priority: goal.priority,
-        tags: goal.tags,
         location: goal.location || '',
-        isHabit: goal.isHabit,
-        recurrence: goal.recurrence,
-        linkedItems: goal.linkedItems,
       });
-      setMilestones(goal.milestones);
     } else {
       form.reset({
         title: '',
@@ -106,23 +104,18 @@ export function GoalFormModal({ isOpen, onClose, goal, onSubmit }: GoalFormModal
         isHabit: false,
         streakCount: 0,
         milestones: [],
+        journalEntries: [],
         linkedItems: { tasks: [], goals: [], reminders: [], events: [] },
       });
-      setMilestones([]);
     }
   }, [goal, form]);
 
   const handleSubmit = async (data: InsertGoal) => {
     try {
-      await onSubmit({
-        ...data,
-        milestones: milestones,
-      });
+      await onSubmit(data);
       form.reset();
-      setMilestones([]);
       setNewTag('');
-      setNewMilestone('');
-      setMilestoneValue('');
+      setNewJournalEntry('');
       onClose();
     } catch (error) {
       console.error('Error saving goal:', error);
@@ -143,30 +136,21 @@ export function GoalFormModal({ isOpen, onClose, goal, onSubmit }: GoalFormModal
   };
 
   const addMilestone = () => {
-    if (newMilestone.trim() && milestoneValue.trim()) {
-      setMilestones([...milestones, {
-        id: nanoid(),
-        title: newMilestone.trim(),
-        targetValue: parseFloat(milestoneValue),
-        completed: false
-      }]);
-      setNewMilestone('');
-      setMilestoneValue('');
-    }
+    appendMilestone({
+      id: nanoid(),
+      title: 'New Milestone',
+      targetValue: 0,
+      completed: false,
+    });
   };
 
-  const removeMilestone = (milestoneId: string) => {
-    setMilestones(milestones.filter(m => m.id !== milestoneId));
-  };
-
-  const toggleMilestone = (milestoneId: string) => {
-    setMilestones(milestones.map(m => 
-      m.id === milestoneId ? { 
-        ...m, 
-        completed: !m.completed,
-        completedAt: !m.completed ? new Date() : undefined
-      } : m
-    ));
+  const toggleMilestone = (index: number) => {
+    const milestone = form.getValues(`milestones.${index}`);
+    updateMilestone(index, {
+      ...milestone,
+      completed: !milestone.completed,
+      completedAt: !milestone.completed ? new Date() : undefined,
+    });
   };
 
   return (
@@ -479,46 +463,60 @@ export function GoalFormModal({ isOpen, onClose, goal, onSubmit }: GoalFormModal
             {/* Milestones */}
             <div className="space-y-3">
               <FormLabel>{t('goals.milestones')}</FormLabel>
+              {milestoneFields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <Input
+                    {...form.register(`milestones.${index}.title`)}
+                    placeholder={t('goals.milestone_title')}
+                  />
+                  <Input
+                    type="number"
+                    {...form.register(`milestones.${index}.targetValue`)}
+                    placeholder={t('goals.milestone_value')}
+                    className="w-32"
+                  />
+                   <Button type="button" variant="ghost" size="sm" onClick={() => removeMilestone(index)}>
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={addMilestone}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('goals.add_milestone')}
+              </Button>
+            </div>
 
+            <Separator />
+
+            {/* Journaling Section */}
+             <div className="space-y-3">
+              <FormLabel>{t('goals.journal')}</FormLabel>
               <div className="flex space-x-2">
-                <Input
-                  placeholder={t('goals.milestone_title')}
-                  value={newMilestone}
-                  onChange={(e) => setNewMilestone(e.target.value)}
+                 <Textarea
+                  placeholder={t('goals.journal_placeholder')}
+                  value={newJournalEntry}
+                  onChange={(e) => setNewJournalEntry(e.target.value)}
+                  rows={3}
                 />
-                <Input
-                  type="number"
-                  placeholder={t('goals.milestone_value')}
-                  value={milestoneValue}
-                  onChange={(e) => setMilestoneValue(e.target.value)}
-                  className="w-32"
-                />
-                <Button type="button" size="sm" onClick={addMilestone}>
+                <Button type="button" size="sm" onClick={() => {
+                  if (newJournalEntry.trim()) {
+                    appendJournalEntry({
+                      id: nanoid(),
+                      date: new Date(),
+                      content: newJournalEntry.trim(),
+                    });
+                    setNewJournalEntry('');
+                  }
+                }}>
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-
-              {milestones.length > 0 && (
-                <div className="space-y-2">
-                  {milestones.map((milestone) => (
-                    <div key={milestone.id} className="flex items-center space-x-2 p-2 rounded border">
-                      <input
-                        type="checkbox"
-                        checked={milestone.completed}
-                        onChange={() => toggleMilestone(milestone.id)}
-                        className="w-4 h-4"
-                      />
-                      <span className={`flex-1 ${milestone.completed ? 'line-through text-muted-foreground' : ''}`}>
-                        {milestone.title} ({milestone.targetValue})
-                      </span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeMilestone(milestone.id)}
-                      >
-                        <Trash className="w-4 h-4" />
-                      </Button>
+               {journalFields.length > 0 && (
+                <div className="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-2">
+                  {journalFields.map((field) => (
+                    <div key={field.id} className="text-sm p-2 bg-muted/50 rounded">
+                      <p className="font-semibold">{format(field.date, 'PPP')}</p>
+                      <p className="text-muted-foreground">{field.content}</p>
                     </div>
                   ))}
                 </div>

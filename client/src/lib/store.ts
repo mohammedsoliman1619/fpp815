@@ -15,8 +15,12 @@ import {
   InsertCalendarEvent,
   NewTask,
   NewTimeBlock,
-  NewRecurrenceRule
+  NewRecurrenceRule,
+  EventReminder,
+  HabitLoop,
+  InsertHabitLoop
 } from '@shared/schema';
+import { addMinutes } from 'date-fns';
 import { db, dbUtils, Settings } from './db';
 
 export interface AnalyticsData {
@@ -55,11 +59,16 @@ interface AppStore {
   isQuickAddOpen: boolean;
   isMobileMenuOpen: boolean;
   isLoading: boolean;
+  isFocusModeActive: boolean;
+  focusedItemId: string | null;
+  habitLoops: HabitLoop[];
 
   // Actions
   setCurrentPage: (page: string) => void;
   setQuickAddOpen: (open: boolean) => void;
   setMobileMenuOpen: (open: boolean) => void;
+  enterFocusMode: (itemId?: string) => void;
+  exitFocusMode: () => void;
 
   // Data Actions
   loadTasks: () => Promise<void>;
@@ -81,10 +90,14 @@ interface AppStore {
 
   createGoal: (goalData: InsertGoal) => Promise<void>;
   updateGoal: (id: string, updates: Partial<Goal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
   updateGoalProgress: (id: string, value: number) => Promise<void>;
 
   createReminder: (reminderData: InsertReminder) => Promise<void>;
+  updateReminder: (id: string, updates: Partial<Reminder>) => Promise<void>;
   deleteReminder: (id: string) => Promise<void>;
+  toggleReminderCompletion: (id: string) => Promise<void>;
+  snoozeReminder: (id: string, minutes: number) => Promise<void>;
 
   // Time Blocks
   createTimeBlock: (timeBlock: NewTimeBlock) => Promise<void>;
@@ -98,6 +111,13 @@ interface AppStore {
 
   createCalendarEvent: (eventData: InsertCalendarEvent) => Promise<void>;
   updateCalendarEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void>;
+  deleteCalendarEvent: (id: string) => Promise<void>;
+
+  // Habit Loops
+  loadHabitLoops: () => Promise<void>;
+  createHabitLoop: (data: InsertHabitLoop) => Promise<void>;
+  updateHabitLoop: (id: string, updates: Partial<HabitLoop>) => Promise<void>;
+  deleteHabitLoop: (id: string) => Promise<void>;
 
   updateSettings: (updates: Partial<Settings>) => Promise<void>;
 
@@ -115,6 +135,7 @@ export const useAppStore = create<AppStore>()(
     reminders: [],
     calendarEvents: [],
     timeBlocks: [],
+    habitLoops: [],
     recurrenceRules: [],
     settings: null,
     analytics: null,
@@ -122,11 +143,33 @@ export const useAppStore = create<AppStore>()(
     isQuickAddOpen: false,
     isMobileMenuOpen: false,
     isLoading: false,
+    isFocusModeActive: false,
+    focusedItemId: null,
 
     // UI Actions
     setCurrentPage: (page) => set({ currentPage: page }),
     setQuickAddOpen: (open) => set({ isQuickAddOpen: open }),
     setMobileMenuOpen: (open) => set({ isMobileMenuOpen: open }),
+    enterFocusMode: (itemId) => {
+      if (itemId) {
+        set({ isFocusModeActive: true, focusedItemId: itemId });
+      } else {
+        // Basic "smart" selection: find the first incomplete task due today with the highest priority
+        const tasks = get().tasks.filter(t => !t.completed && t.dueDate && new Date(t.dueDate).toDateString() === new Date().toDateString());
+        if (tasks.length > 0) {
+          tasks.sort((a, b) => a.priority.localeCompare(b.priority));
+          set({ isFocusModeActive: true, focusedItemId: tasks[0].id });
+        } else {
+          // Fallback: find the first incomplete task
+          const firstIncomplete = get().tasks.find(t => !t.completed);
+          if (firstIncomplete) {
+            set({ isFocusModeActive: true, focusedItemId: firstIncomplete.id });
+          }
+        }
+      }
+    },
+    exitFocusMode: () => set({ isFocusModeActive: false, focusedItemId: null }),
+
 
     // Data Loading Actions
     loadTasks: async () => {
@@ -203,6 +246,17 @@ export const useAppStore = create<AppStore>()(
       } catch (error) {
         console.error('Error loading recurrence rules:', error);
         set({ recurrenceRules: [] });
+      }
+    },
+
+    loadHabitLoops: async () => {
+      try {
+        await db.ready;
+        const habitLoops = await db.habitLoops.orderBy('createdAt').reverse().toArray();
+        set({ habitLoops });
+      } catch (error) {
+        console.error('Error loading habit loops:', error);
+        set({ habitLoops: [] });
       }
     },
 
@@ -289,7 +343,31 @@ export const useAppStore = create<AppStore>()(
     toggleTaskCompletion: async (id) => {
       const task = get().tasks.find(t => t.id === id);
       if (task) {
-        await dbUtils.updateTask(id, { completed: !task.completed });
+        const newCompletedState = !task.completed;
+        await dbUtils.updateTask(id, { completed: newCompletedState });
+
+        if (newCompletedState) {
+          // Check for linked goals
+          const { goals, updateGoalProgress } = get();
+          const linkedGoals = goals.filter(goal => goal.linkedItems?.tasks?.includes(id));
+          for (const goal of linkedGoals) {
+              const newProgress = (goal.currentValue || 0) + 1;
+              await updateGoalProgress(goal.id, newProgress);
+          }
+
+          // Check for habit loops
+          const { habitLoops, tasks, reminders } = get();
+          for (const loop of habitLoops) {
+            const stepIndex = loop.steps.findIndex(step => step.itemId === id && step.itemType === 'task');
+            if (stepIndex !== -1 && stepIndex < loop.steps.length - 1) {
+              const nextStep = loop.steps[stepIndex + 1];
+              console.log(`Habit Loop: Activating next step: ${nextStep.itemType} - ${nextStep.itemId}`);
+              // In a real implementation, you would trigger a notification
+              // or activate the next task/reminder here.
+            }
+          }
+        }
+
         await get().loadTasks();
         await get().loadAnalytics();
       }
@@ -310,6 +388,12 @@ export const useAppStore = create<AppStore>()(
 
     updateGoal: async (id, updates) => {
       await dbUtils.updateGoal(id, updates);
+      await get().loadGoals();
+      await get().loadAnalytics();
+    },
+
+    deleteGoal: async (id) => {
+      await db.goals.delete(id);
       await get().loadGoals();
       await get().loadAnalytics();
     },
@@ -342,9 +426,44 @@ export const useAppStore = create<AppStore>()(
       await get().loadReminders();
     },
 
+    updateReminder: async (id, updates) => {
+      await db.reminders.update(id, updates);
+      await get().loadReminders();
+    },
+
     deleteReminder: async (id: string) => {
       await db.reminders.delete(id);
       await get().loadReminders();
+    },
+
+    toggleReminderCompletion: async (id: string) => {
+      const reminder = get().reminders.find(r => r.id === id);
+      if (reminder) {
+        const newCompletedState = !reminder.completed;
+        await get().updateReminder(id, { completed: newCompletedState });
+
+        if (newCompletedState) {
+          // Check for habit loops
+          const { habitLoops, tasks, reminders } = get();
+          for (const loop of habitLoops) {
+            const stepIndex = loop.steps.findIndex(step => step.itemId === id && step.itemType === 'reminder');
+            if (stepIndex !== -1 && stepIndex < loop.steps.length - 1) {
+              const nextStep = loop.steps[stepIndex + 1];
+              console.log(`Habit Loop: Activating next step: ${nextStep.itemType} - ${nextStep.itemId}`);
+              // In a real implementation, you would trigger a notification
+              // or activate the next task/reminder here.
+            }
+          }
+        }
+      }
+    },
+
+    snoozeReminder: async (id: string, minutes: number) => {
+      const reminder = get().reminders.find(r => r.id === id);
+      if (reminder) {
+        const newDueDate = addMinutes(reminder.dueDate, minutes);
+        await get().updateReminder(id, { dueDate: newDueDate });
+      }
     },
 
     // Time Blocks
@@ -446,6 +565,32 @@ export const useAppStore = create<AppStore>()(
       }
     },
 
+    deleteCalendarEvent: async (id: string) => {
+      try {
+        await db.ready;
+        await db.calendarEvents.delete(id);
+        await get().loadCalendarEvents();
+      } catch (error) {
+        console.error('Error deleting calendar event:', error);
+      }
+    },
+
+    // Habit Loop Actions
+    createHabitLoop: async (data) => {
+      const now = new Date();
+      const newLoop = { ...data, id: crypto.randomUUID(), createdAt: now, updatedAt: now };
+      await db.habitLoops.add(newLoop);
+      await get().loadHabitLoops();
+    },
+    updateHabitLoop: async (id, updates) => {
+      await db.habitLoops.update(id, { ...updates, updatedAt: new Date() });
+      await get().loadHabitLoops();
+    },
+    deleteHabitLoop: async (id) => {
+      await db.habitLoops.delete(id);
+      await get().loadHabitLoops();
+    },
+
     // Settings Actions
     updateSettings: async (updates) => {
       await dbUtils.updateSettings(updates);
@@ -526,6 +671,7 @@ export const useAppStore = create<AppStore>()(
           get().loadCalendarEvents(),
           get().loadTimeBlocks(),
           get().loadRecurrenceRules(),
+          get().loadHabitLoops(),
           get().loadSettings()
         ]);
         await get().loadAnalytics();

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '@/lib/store';
-import { Reminder } from '@/types';
+import { Reminder } from '@shared/schema';
 import { formatDate, formatTime, isOverdue, isDueToday } from '@/utils/dateUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,13 +25,35 @@ import {
   AlertCircle,
   Calendar,
   Search,
-  MoreVertical
+  MoreVertical,
+  Edit,
+  Trash2,
+  MapPin
 } from 'lucide-react';
+import { ReminderFormModal } from '@/components/modals/ReminderFormModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export function Reminders() {
   const { t } = useTranslation();
-  const { reminders, createReminder } = useAppStore();
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { reminders, createReminder, updateReminder, deleteReminder, toggleReminderCompletion, snoozeReminder } = useAppStore();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<Reminder | undefined>(undefined);
+  const [reminderToDelete, setReminderToDelete] = useState<Reminder | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [newReminder, setNewReminder] = useState({
     title: '',
@@ -58,26 +80,38 @@ export function Reminders() {
   );
   const completedReminders = filteredReminders.filter(reminder => reminder.completed);
 
-  const handleCreateReminder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newReminder.title.trim() || !newReminder.dueDate) return;
+  const handleOpenCreate = () => {
+    setEditingReminder(undefined);
+    setIsFormOpen(true);
+  };
 
-    const dueDateTime = new Date(`${newReminder.dueDate}T${newReminder.dueTime || '09:00'}`);
+  const handleOpenEdit = (reminder: Reminder) => {
+    setEditingReminder(reminder);
+    setIsFormOpen(true);
+  };
 
-    await createReminder({
-      title: newReminder.title,
-      description: newReminder.description,
-      dueDate: dueDateTime,
-      completed: false
-    });
+  const handleFormSubmit = async (data: any) => {
+    if (editingReminder) {
+      await updateReminder(editingReminder.id, data);
+    } else {
+      await createReminder(data);
+    }
+  };
 
-    setNewReminder({
-      title: '',
-      description: '',
-      dueDate: '',
-      dueTime: ''
-    });
-    setIsCreateDialogOpen(false);
+  const handleDelete = async () => {
+    if (reminderToDelete) {
+      await deleteReminder(reminderToDelete.id);
+      setReminderToDelete(null);
+    }
+  };
+
+  const handleToggleComplete = (id: string) => {
+    toggleReminderCompletion(id);
+  };
+
+  const handleSnooze = (id: string) => {
+    // Default snooze for 15 minutes
+    snoozeReminder(id, 15);
   };
 
   const ReminderCard = ({ reminder }: { reminder: Reminder }) => {
@@ -121,35 +155,55 @@ export function Reminders() {
                   <Clock className="w-4 h-4" />
                   <span>{formatTime(reminder.dueDate)}</span>
                 </div>
+                {reminder.location && (
+                  <div className="flex items-center space-x-1">
+                    <MapPin className="w-4 h-4" />
+                    <span>{reminder.location}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center space-x-2 mt-3">
                 {isReminderToday && !reminder.completed && (
-                  <Badge variant="default">Today</Badge>
+                  <Badge variant="default">{t('reminders.today')}</Badge>
                 )}
                 {isReminderOverdue && !reminder.completed && (
-                  <Badge variant="destructive">Overdue</Badge>
+                  <Badge variant="destructive">{t('reminders.overdue')}</Badge>
                 )}
                 {reminder.completed && (
                   <Badge variant="outline" className="bg-emerald-50 text-emerald-700">
-                    Completed
+                    {t('reminders.completed')}
                   </Badge>
                 )}
               </div>
             </div>
             
-            <Button variant="ghost" size="sm">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleOpenEdit(reminder)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  {t('actions.edit')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setReminderToDelete(reminder)} className="text-red-500">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t('actions.delete')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {!reminder.completed && (
             <div className="flex space-x-2 pt-3 border-t">
-              <Button size="sm" variant="outline" className="flex-1">
-                Snooze
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSnooze(reminder.id)}>
+                {t('reminders.snooze')}
               </Button>
-              <Button size="sm" className="flex-1">
-                Mark Complete
+              <Button size="sm" className="flex-1" onClick={() => handleToggleComplete(reminder.id)}>
+                {t('reminders.mark_complete')}
               </Button>
             </div>
           )}
@@ -157,81 +211,6 @@ export function Reminders() {
       </Card>
     );
   };
-
-  const CreateReminderDialog = () => (
-    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          {t('reminders.add_reminder')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('reminders.add_reminder')}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleCreateReminder} className="space-y-4">
-          <div>
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              value={newReminder.title}
-              onChange={(e) => setNewReminder({ ...newReminder, title: e.target.value })}
-              placeholder="Enter reminder title"
-              required
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={newReminder.description}
-              onChange={(e) => setNewReminder({ ...newReminder, description: e.target.value })}
-              placeholder="Optional description"
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="dueDate">Date *</Label>
-              <Input
-                id="dueDate"
-                type="date"
-                value={newReminder.dueDate}
-                onChange={(e) => setNewReminder({ ...newReminder, dueDate: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="dueTime">Time</Label>
-              <Input
-                id="dueTime"
-                type="time"
-                value={newReminder.dueTime}
-                onChange={(e) => setNewReminder({ ...newReminder, dueTime: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="flex space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => setIsCreateDialogOpen(false)}
-            >
-              {t('actions.cancel')}
-            </Button>
-            <Button type="submit" className="flex-1">
-              {t('actions.add')}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
 
   const ReminderSection = ({ 
     reminders, 
@@ -275,10 +254,13 @@ export function Reminders() {
         <div>
           <h1 className="text-hierarchy-1">{t('reminders.title')}</h1>
           <p className="text-muted-foreground">
-            {upcomingReminders.length + todayReminders.length + overdueReminders.length} active, {completedReminders.length} completed
+            {t('reminders.summary', { active: upcomingReminders.length + todayReminders.length + overdueReminders.length, completed: completedReminders.length })}
           </p>
         </div>
-        <CreateReminderDialog />
+        <Button onClick={handleOpenCreate}>
+          <Plus className="w-4 h-4 mr-2" />
+          {t('reminders.add_reminder')}
+        </Button>
       </div>
 
       {/* Search */}
@@ -300,8 +282,8 @@ export function Reminders() {
       <Tabs defaultValue="upcoming" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="upcoming">{t('reminders.upcoming')}</TabsTrigger>
-          <TabsTrigger value="today">Today</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsTrigger value="today">{t('reminders.today')}</TabsTrigger>
+          <TabsTrigger value="overdue">{t('reminders.overdue')}</TabsTrigger>
           <TabsTrigger value="completed">{t('reminders.completed')}</TabsTrigger>
         </TabsList>
         
@@ -309,7 +291,7 @@ export function Reminders() {
           <ReminderSection
             reminders={upcomingReminders}
             title={t('reminders.upcoming')}
-            emptyMessage="No upcoming reminders"
+            emptyMessage={t('reminders.no_upcoming')}
             icon={Bell}
           />
         </TabsContent>
@@ -317,8 +299,8 @@ export function Reminders() {
         <TabsContent value="today" className="mt-6">
           <ReminderSection
             reminders={todayReminders}
-            title="Today's Reminders"
-            emptyMessage="No reminders for today"
+            title={t('reminders.today_title')}
+            emptyMessage={t('reminders.no_today')}
             icon={Clock}
           />
         </TabsContent>
@@ -326,8 +308,8 @@ export function Reminders() {
         <TabsContent value="overdue" className="mt-6">
           <ReminderSection
             reminders={overdueReminders}
-            title="Overdue Reminders"
-            emptyMessage="No overdue reminders"
+            title={t('reminders.overdue_title')}
+            emptyMessage={t('reminders.no_overdue')}
             icon={AlertCircle}
           />
         </TabsContent>
@@ -336,11 +318,35 @@ export function Reminders() {
           <ReminderSection
             reminders={completedReminders}
             title={t('reminders.completed')}
-            emptyMessage="No completed reminders"
+            emptyMessage={t('reminders.no_completed')}
             icon={CheckCircle}
           />
         </TabsContent>
       </Tabs>
+
+      <ReminderFormModal
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleFormSubmit}
+        reminder={editingReminder}
+      />
+
+      <AlertDialog open={!!reminderToDelete} onOpenChange={() => setReminderToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('reminders.delete_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('reminders.delete_confirm_description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>
+              {t('actions.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

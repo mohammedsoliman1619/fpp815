@@ -14,9 +14,12 @@ import {
   Plus,
   Globe,
   Sun,
-  Moon
+  Moon,
+  Crosshair,
+  Zap
 } from 'lucide-react';
 import { supportedLanguages } from '@/lib/i18n';
+import { GlobalSearch } from './GlobalSearch';
 
 interface TopBarProps {
   title: string;
@@ -25,7 +28,7 @@ interface TopBarProps {
 export function TopBar({ title }: TopBarProps) {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
-  const { setQuickAddOpen, setMobileMenuOpen } = useAppStore();
+  const { settings, updateSettings, setQuickAddOpen, setMobileMenuOpen, enterFocusMode } = useAppStore();
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -57,6 +60,33 @@ export function TopBar({ title }: TopBarProps) {
       </div>
 
       <div className="flex items-center space-x-3">
+        <GlobalSearch />
+
+        {/* Focus Mode Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden sm:flex items-center"
+          onClick={() => enterFocusMode()}
+        >
+          <Crosshair className="w-4 h-4 mr-2" />
+          <span>Focus</span>
+        </Button>
+
+        {/* Mood/Energy Toggle */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="p-2">
+              <Zap className="w-5 h-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => updateSettings({ mood: 'high-energy' })}>High Energy</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateSettings({ mood: 'normal' })}>Normal</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => updateSettings({ mood: 'low-energy' })}>Low Energy</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         {/* Quick Add Button */}
         <Button
           size="sm"

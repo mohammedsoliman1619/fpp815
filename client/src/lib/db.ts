@@ -11,13 +11,18 @@ import {
   InsertReminder,
   InsertCalendarEvent,
   TimeBlock,
-  RecurrenceRule
+  InsertTimeBlock,
+  TaskTemplate,
+  InsertTaskTemplate,
+  HabitLoop,
+  InsertHabitLoop
 } from '@shared/schema';
 
 export interface Settings {
   id: string;
   theme: 'light' | 'dark' | 'system';
   language: string;
+  mood: 'normal' | 'high-energy' | 'low-energy';
   dateFormat: string;
   timeFormat: '12h' | '24h';
   firstDayOfWeek: number;
@@ -42,12 +47,13 @@ export class ProductiFlowDB extends Dexie {
   calendarEvents!: Table<CalendarEvent>;
   settings!: Table<Settings>;
   timeBlocks!: Table<TimeBlock>;
-  recurrenceRules!: Table<RecurrenceRule>;
+  taskTemplates!: Table<TaskTemplate>;
+  habitLoops!: Table<HabitLoop>;
 
   constructor() {
     super('ProductiFlowDB');
     
-    this.version(1).stores({
+    this.version(2).stores({
       tasks: '++id, title, completed, dueDate, startDate, priority, project, createdAt, updatedAt',
       projects: '++id, name, createdAt, updatedAt',
       goals: '++id, title, category, deadline, isHabit, streakCount, lastCompletedDate, createdAt, updatedAt',
@@ -55,7 +61,31 @@ export class ProductiFlowDB extends Dexie {
       calendarEvents: '++id, title, startDate, endDate, createdAt, updatedAt',
       settings: '++id, theme, language',
       timeBlocks: '++id, title, startTime, endTime, createdAt, updatedAt',
-      recurrenceRules: '++id, frequency, interval, createdAt, updatedAt'
+    }).upgrade(tx => {
+      return tx.table('recurrenceRules').clear();
+    });
+
+    this.version(3).stores({
+      tasks: '++id, title, completed, dueDate, startDate, priority, project, createdAt, updatedAt',
+      projects: '++id, name, createdAt, updatedAt',
+      goals: '++id, title, category, deadline, isHabit, streakCount, lastCompletedDate, createdAt, updatedAt',
+      reminders: '++id, title, dueDate, completed, createdAt, updatedAt',
+      calendarEvents: '++id, title, startDate, endDate, createdAt, updatedAt',
+      settings: '++id, theme, language',
+      timeBlocks: '++id, title, startTime, endTime, createdAt, updatedAt',
+      taskTemplates: '++id, name, createdAt',
+    });
+
+    this.version(4).stores({
+      tasks: '++id, title, completed, dueDate, startDate, priority, project, createdAt, updatedAt',
+      projects: '++id, name, createdAt, updatedAt',
+      goals: '++id, title, category, deadline, isHabit, streakCount, lastCompletedDate, createdAt, updatedAt',
+      reminders: '++id, title, dueDate, completed, createdAt, updatedAt',
+      calendarEvents: '++id, title, startDate, endDate, createdAt, updatedAt',
+      settings: '++id, theme, language',
+      timeBlocks: '++id, title, startTime, endTime, createdAt, updatedAt',
+      taskTemplates: '++id, name, createdAt',
+      habitLoops: '++id, name, createdAt',
     });
 
     this.on('ready', async () => {
@@ -66,6 +96,7 @@ export class ProductiFlowDB extends Dexie {
             id: '1',
             theme: 'system',
             language: 'en',
+            mood: 'normal',
             dateFormat: 'MM/dd/yyyy',
             timeFormat: '12h',
             firstDayOfWeek: 0,
@@ -249,5 +280,20 @@ export const dbUtils = {
       await db.reminders.clear();
       await db.calendarEvents.clear();
     });
-  }
+  },
+
+  async createTaskTemplate(templateData: InsertTaskTemplate): Promise<TaskTemplate> {
+    const now = new Date();
+    const template: TaskTemplate = {
+      ...templateData,
+      id: crypto.randomUUID(),
+      createdAt: now,
+    };
+    await db.taskTemplates.add(template);
+    return template;
+  },
+
+  async getTaskTemplates(): Promise<TaskTemplate[]> {
+    return await db.taskTemplates.toArray();
+  },
 };
