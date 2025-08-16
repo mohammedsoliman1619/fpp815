@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StreakCalendar } from '@/components/analytics/StreakCalendar';
 import { CategoryBreakdownChart } from '@/components/analytics/CategoryBreakdownChart';
 import { SmartSuggestions } from '@/components/analytics/SmartSuggestions';
+import { TimelineReplayView } from '@/components/analytics/TimelineReplayView';
 import {
   BarChart3,
   TrendingUp,
@@ -241,11 +242,12 @@ export function Analytics() {
 
       {/* Analytics Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="goals">Goals</TabsTrigger>
           <TabsTrigger value="streaks">Streaks</TabsTrigger>
+          <TabsTrigger value="replay">Replay</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="mt-6">
@@ -274,6 +276,10 @@ export function Analytics() {
         
         <TabsContent value="streaks" className="mt-6">
           <StreakCalendar />
+        </TabsContent>
+
+        <TabsContent value="replay" className="mt-6">
+          <TimelineReplayView />
         </TabsContent>
       </Tabs>
     </div>
